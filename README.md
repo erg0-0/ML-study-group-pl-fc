@@ -1,2 +1,3 @@
 # ML-study-group-pl-fc
-Data Available as a result of our machine learning groups pl on facebook (learning from book introduction to statistical learning)
+Files created in the result of the machine learning groups pl meetups - on facebook/slack.
+(group for learning from book introduction to statistical learning)
