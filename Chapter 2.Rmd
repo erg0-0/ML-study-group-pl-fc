@@ -1,7 +1,0 @@
----
-title: "Chapter2"
-author: "Igor Adamiec"
-date: "5/2/2019"
-output: html_document
----
-
