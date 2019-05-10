@@ -1,0 +1,107 @@
+---
+title: "Auto"
+author: "Igor Adamiec"
+date: "5/10/2019"
+output: html_document
+---
+
+```{r message = FALSE}
+library(ISLR)
+library(tidyverse)
+library(GGally)
+library(gridExtra)
+```
+
+```{r}
+auto <- Auto
+```
+
+```{r}
+auto %>% 
+  head()
+```
+
+### a)
+
+```{r}
+auto %>% 
+  glimpse()
+```
+
+```{r}
+auto %>% 
+  summary()
+```
+
+#### Quantitative  
++ name.
+
+#### Qualitative  
++ cala reszta.
+
+### b)
+
+
+```{r}
+auto %>% 
+  select_if(is.numeric) %>% 
+  map(range)
+```
+
+### c)
+
+
+
+
+```{r}
+auto_mean <- auto %>% 
+  select_if(is.numeric) %>% 
+  map_dbl(mean)
+auto_sd <- auto %>% 
+  select_if(is.numeric) %>% 
+  map_dbl(sd)
+auto_mean %>% 
+  bind_rows(auto_sd) %>% 
+  mutate("function" = c("mean", "std")) %>% 
+  select("function", everything())
+```
+
+```{r}
+auto2 <- auto[-(10:85),]
+```
+
+```{r}
+auto2 %>% 
+  select_if(is.numeric) %>% 
+  map_dfc(range)
+```
+
+
+```{r}
+auto2_mean <- auto2 %>% 
+  select_if(is.numeric) %>% 
+  map_dbl(mean)
+auto2_sd <- auto2 %>% 
+  select_if(is.numeric) %>% 
+  map_dbl(sd)
+auto2_mean %>% 
+  bind_rows(auto2_sd) %>% 
+  mutate("function" = c("mean", "std")) %>% 
+  select("function", everything())
+```
+
+### e
+
+```{r message=FALSE, fig.width=15, fig.height=10}
+auto %>% 
+  select(-name) %>% 
+  ggpairs()
+
+
+```
+
+
+
+
+
+

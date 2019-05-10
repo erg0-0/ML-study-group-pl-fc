@@ -1,0 +1,96 @@
+---
+title: "Boston"
+author: "Igor Adamiec"
+date: "5/10/2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(GGally)
+library(gridExtra)
+```
+
+```{r}
+boston <- Boston %>% 
+  mutate(chas = as.factor(chas))
+```
+
+```{r}
+?Boston
+```
+
+```{r}
+boston %>% 
+  glimpse()
+```
+
+```{r message=FALSE, fig.width=15, fig.height=10}
+boston %>% 
+  ggpairs()
+```
+
+```{r}
+plot1 <- boston %>% ggplot() + geom_point(aes(x = crim, y = age), color = rgb(25,177,200,maxColorValue=255))
+plot2 <- boston %>% ggplot() + geom_point(aes(x = zn, y = rm), color = "goldenrod3")
+plot3 <- boston %>% ggplot() + geom_point(aes(x = indus, y = rad), color = "aquamarine4")
+plot4 <- boston %>% ggplot() + geom_point(aes(x = zn, y = dis), color = "chocolate")
+grid.arrange(grobs = list(plot1, plot2, plot3, plot4), nrow = 2)
+```
+
+```{r}
+for (i in 1:ncol(boston)) {
+  p <- boston %>% ggplot(aes(x = crim, y = boston[[i]])) + geom_point(color = rgb(sample(1:255,1), sample(1:255,1), sample(1:255,1), maxColorValue=255)) + labs(y = colnames(boston)[i])
+print(p)
+}
+```
+
+```{r}
+
+```
+
+### d)
+
+```{r}
+boston %>% 
+  select_if(is.numeric) %>% 
+  map_dfr(range)
+```
+
+### e)
+
+```{r}
+boston %>% 
+  count(chas)
+```
+
+### f)
+
+```{r}
+boston %>% 
+  summarise(median = median(ptratio))
+```
+
+
+### g)
+
+```{r}
+boston %>% 
+  filter(medv == min(medv))
+```
+
+### h)
+
+```{r}
+boston %>% filter(rm >= 7) %>% nrow()
+```
+
+```{r}
+boston %>% filter(rm >= 8) %>% nrow()
+```
+
+```{r}
+boston %>% filter(rm >= 8)
+```
+
