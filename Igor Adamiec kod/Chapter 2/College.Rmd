@@ -13,6 +13,7 @@ funkcja(zbior danych, reszta argumentow) = zbior danych %>% funkcja(reszta argum
 ctrl + shift + m
 
 ```{r}
+
 library(ISLR) #bilbvioteka naszej książki - tu znajdziemy datasety
 library(tidyverse) #zbiór bibliotek do manipulacji danymi i ich wizualizacji
 ```
@@ -47,8 +48,22 @@ college %>%
 
 ```{r}
 college %>% 
+  mutate(Private = as.factor(Private)) %>% 
   summary()
+as.numeric()
+as.character()
 ```
+
+```{r}
+college %>% 
+  glimpse()
+```
+
+```{r}
+college %>% 
+  str()
+```
+
 
 Wczytam biblioteke GGally, ktora jest uzupelnieniem pakietu graficznego ggplot2 (jeden ze skladnikow Tidyverse)
 
@@ -58,7 +73,7 @@ library(GGally)
 
 ```{r message=FALSE, fig.width=15, fig.height=20}
 p <- college %>% 
-  select(1:10) %>% 
+  select(2:10) %>% 
   ggpairs(mapping = aes(fill = Private, color = Private)) 
   
 
@@ -71,25 +86,38 @@ for(i in 1:p$nrow) {
 }
 
 p
+
+college[3:10] %>% head()
+pairs(college[3:10])
 ```
 
 ```{r}
 college %>% 
-  ggplot(aes(x = Private, y = Outstate, fill = Private)) +
-  geom_boxplot() +
-  scale_fill_manual(values=c("firebrick4", "forestgreen"))
+  ggplot(aes(x = Private, y = Outstate, fill = Private, color = Private)) +
+  geom_jitter() +
+  geom_boxplot(alpha = 0.7) +
+  
+  scale_fill_manual(values=c("firebrick4", "forestgreen")) +
+  scale_color_manual(values=c("firebrick4", "forestgreen"))
 ```
 
 ```{r}
 college <- college %>% 
   #rename(Name = X1) %>% 
   mutate(Elite = as.factor(ifelse(Top10perc > 50, "Yes", "No")),
-         Private = as.factor(Private),
-         Name = as.factor(Name))
+         Private = as.factor(Private))
   
+college %>% 
+  mutate(Elite = ifelse(Top10perc > 50, "Yes", "No")) %>% summary()
 
 college %>% 
   head()
+
+
+```
+
+```{r}
+college %>% summary()
 ```
 
 ```{r}
@@ -106,6 +134,12 @@ plot1 <- college %>% ggplot() + geom_histogram(aes(x = Apps), fill = "deepskyblu
 plot2 <- college %>% ggplot() + geom_histogram(aes(x = Accept), fill = "goldenrod3")
 plot3 <- college %>% ggplot() + geom_histogram(aes(x = Enroll), fill = "aquamarine4")
 plot4 <- college %>% ggplot() + geom_histogram(aes(x = PhD), fill = "chocolate")
-grid.arrange(plot1, plot2, plot3, plot4, nrow = 2)
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 4)
+```
+
+```{r}
+college %>% 
+  ggplot() + 
+  geom_histogram(aes(x = Apps), fill = "deepskyblue3")
 ```
 
