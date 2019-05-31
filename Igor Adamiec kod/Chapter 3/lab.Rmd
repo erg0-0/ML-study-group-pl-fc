@@ -112,3 +112,71 @@ model3 <- update(model2, ~.-age)
 model3 %>% summary
 ```
 
+# 3.6.2
+
+```{r}
+model4 <- lm(data = Boston, 
+             formula = medv ~ lstat + I(lstat^2))
+model4 %>% summary()
+```
+
+Zamiast I() można użyć też funkcji poly() - wtedy trzeba dodać "raw = T", bo inaczej wartości wielomianu są orthogonal (może ktoś wyjaśni). Poly() dodaje nam wszystkie wielomiany (od 1 do tego, któy weźmiemy)
+
+```{r}
+lm(data = Boston, 
+             formula = medv ~ poly(lstat, 2, raw = T)) %>% summary()
+```
+
+```{r}
+Boston %>% 
+ggplot(aes(x = lstat)) +
+  geom_point(aes(y = medv)) + 
+  geom_line(aes(y = model4$fitted.values), color = "red", size = 2)
+```
+
+```{r}
+anova(model3, model4)
+```
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model4)
+```
+
+
+```{r}
+Boston %>% 
+ggplot(aes(x = lstat)) +
+  geom_point(aes(y = medv)) + 
+  geom_line(aes(y = lm(data = Boston, formula = medv ~poly(lstat, 5, raw = T))$fitted.values), color = "red", size = 2)
+```
+
+```{r}
+lm(data = Boston, 
+   formula = medv ~log(rm)) %>% summary()
+```
+
+```{r}
+Boston %>% 
+ggplot(aes(x = rm)) +
+  geom_point(aes(y = medv)) + 
+  geom_line(aes(y = lm(data = Boston, formula = medv ~log(rm))$fitted.values), color = "red", size = 2)
+```
+
+
+# 3.6.6.
+
+```{r}
+Carseats %>% glimpse()
+```
+
+
+```{r}
+model <- lm(Sales ~. + Income:Advertising + Price:Age, data = Carseats)
+model %>% summary()
+```
+
+```{r}
+Carseats$ShelveLoc %>% contrasts()
+```
+

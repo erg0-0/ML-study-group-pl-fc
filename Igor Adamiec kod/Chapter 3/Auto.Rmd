@@ -1,0 +1,134 @@
+---
+title: "Auto"
+author: "Igor Adamiec"
+date: "31 maja 2019"
+output: html_document
+---
+
+https://data.library.virginia.edu/diagnostic-plots/
+
+```{r}
+library(ISLR)
+library(tidyverse)
+```
+
+```{r}
+auto <- Auto 
+#%>% mutate(origin = as.factor(origin))
+```
+
+```{r}
+auto %>% summary()
+```
+
+```{r}
+auto %>% glimpse
+```
+
+
+# a) Use the lm() function to perform a simple linear regression with
+# mpg as the response and horsepower as the predictor. Use the
+# summary() function to print the results. 
+
+```{r}
+model_a <- lm(data = auto, 
+              formula = mpg ~ horsepower)
+model_a %>% summary
+```
+
+
+Comment on the output.
+For example:
+
+##  Is there a relationship between the predictor and the response?
+
+Tak - vartość p jest tak mała, że odrzucamy hipotezę zerową o tym, że współczynniki regresji są równe 0. Potwierdza to duża wartość statystyki F.
+
+```{r}
+ggplot(data = auto, aes(x = horsepower, y = mpg)) + geom_point()
+```
+
+## How strong is the relationship between the predictor and the response?
+
+residual error relative to the response
+```{r}
+RSE <- 4.906
+mpg_mean <- auto$mpg %>% mean(na.rm = T)
+RSE/mpg_mean * 100
+```
+
+R^2 = 0.606, czyli horsepower wyjaśnia 60,6% wariancji zmiennej mpg.
+
+## Is the relationship between the predictor and the response
+positive or negative?
+
+```{r}
+model_a$coefficients
+```
+
+Relacja jest negatywna.
+
+## What is the predicted mpg associated with a horsepower of
+98? What are the associated 95% confidence and prediction
+intervals?
+
+```{r}
+predict(model_a, data.frame(horsepower = 98),
+        interval = "confidence")
+```
+
+```{r}
+predict(model_a, data.frame(horsepower = 98),
+        interval = "prediction")
+```
+
+# Plot the response and the predictor. Use the abline() function
+to display the least squares regression line.
+
+```{r}
+auto %>% 
+  ggplot(aes(x = horsepower)) +
+  geom_point(aes(y = mpg)) +
+  geom_line(aes(y = model_a$fitted.values), color = "red", size = 2)
+```
+
+# Use the plot() function to produce diagnostic plots of the least
+squares regression fit. Comment on any problems you see with
+the fit.
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model_a)
+
+```
+
+
+
+
+Residuals - widać jakiś trend - może to być dowód na nieliniowość
+
+
+```{r}
+ggplot(data = auto, aes(x = model_a$fitted.values, y = rstudent(model_a))) + geom_point()
+```
+Żadna wartość nie jest mniejsa niż -3 lub większa niż 3 - nie ma outlierów
+
+```{r}
+ggplot(data = auto, 
+       aes(x = hatvalues(model_a),
+           y = rstudent(model_a))) +
+  geom_point() +
+  geom_line(aes(y = 0), linetype = "dashed") + 
+  geom_text(aes(label = which.max(hatvalues(model_a)), x = hatvalues(model_a)[116] - .001, y = rstudent(model_a)[116] )) + 
+  geom_label(aes(label = which(rstudent(model_a) %in% rstudent(model_a)[rstudent(model_a) > 3 | rstudent(model_a) < -3 ]), x = hatvalues(model_a)[which(rstudent(model_a) %in% rstudent(model_a)[rstudent(model_a) > 3 | rstudent(model_a) < -3 ])] - .001, y =  rstudent(model_a)[rstudent(model_a) > 3 | rstudent(model_a) < -3 ] ))
+```
+
+```{r}
+rstudent(model_a) %>% which.max()
+```
+
+```{r}
+hatvalues(model_a)[which(rstudent(model_a) %in% rstudent(model_a)[rstudent(model_a) > 3 | rstudent(model_a) < -3 ])]
+which(rstudent(model_a) %in% rstudent(model_a)[rstudent(model_a) > 3 | rstudent(model_a) < -3 ])
+```
+
