@@ -1,0 +1,7 @@
+---
+title: "Auto poly"
+author: "Igor Adamiec"
+date: "31 maja 2019"
+output: html_document
+---
+

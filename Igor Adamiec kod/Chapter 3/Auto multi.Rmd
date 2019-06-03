@@ -1,0 +1,96 @@
+---
+title: "Auto poly"
+author: "Igor Adamiec"
+date: "31 maja 2019"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+library(GGally)
+```
+
+
+Produce a scatterplot matrix which includes all of the variables
+in the data set.
+
+```{r message = FALSE}
+auto %>% 
+  select(-name) %>% 
+  ggpairs()
+```
+
+Compute the matrix of correlations between the variables using
+the function cor(). You will need to exclude the name variable, 
+which is qualitative.
+
+```{r}
+auto %>% select(-name) %>% cor()
+
+```
+
+Use the lm() function to perform a multiple linear regression
+with mpg as the response and all other variables except name as
+the predictors. Use the summary() function to print the results.
+
+```{r}
+model_multi <- lm(data = auto,
+                  formula = mpg~. - name)
+model_multi %>% summary
+```
+
+Is there a relationship between the predictors and the response?
+
+F statistics jest daleka od 1m a p value jest małe - jest zależność.
+
+Which predictors appear to have a statistically significant
+relationship to the response?
+
+wszystkie z P value < 0,05
+
+What does the coefficient for the year variable suggest?
+
+Przy pozostałYch zmiennych stałych, mpg zwiększa sięo 0,751 z każ•dym rokiem produkcji
+
+Use the plot() function to produce diagnostic plots of the linear
+regression fit. Comment on any problems you see with the fit.
+Do the residual plots suggest any unusually large outliers? Does
+the leverage plot identify any observations with unusually high
+leverage?
+
+```{r}
+plot(model_multi)
+```
+
+wydaje się być zależność nieliniowa, 
+punkt 14 wydaje się mieć duży leverage
+
+```{r}
+plot(predict(model_multi), rstudent(model_multi))
+```
+
+Na pewno są outliery
+
+Use the * and : symbols to fit linear regression models with
+interaction effects. Do any interactions appear to be statistically
+significant?
+
+```{r}
+lm(data = auto, mpg~cylinders*displacement+displacement*weight) %>% 
+summary()
+```
+
+Wziąłem 2 najbardziej skorelowane pary i sprawdziłem ich interakcje - displacement:weight jest statystycznie istotna, a cylinders:displacement - nie (tak jak samo)
+
+```{r}
+lm(data = auto, mpg~displacement*weight) %>% 
+summary()
+```
+
+
+Try a few different transformations of the variables, such as
+log(X),
+√
+X, X2. Comment on your findings.
+
+

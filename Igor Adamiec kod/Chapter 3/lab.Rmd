@@ -1,0 +1,182 @@
+---
+title: "Untitled"
+author: "Igor Adamiec"
+date: "29 maja 2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(ISLR)
+library(gridExtra)
+```
+
+```{r}
+Boston %>% 
+  glimpse()
+```
+
+```{r}
+Boston %>% 
+  summary()
+```
+
+```{r}
+model <- lm(data = Boston,
+            formula = medv ~ lstat)
+```
+
+```{r}
+model %>%
+  summary()
+```
+
+```{r}
+model %>% names
+```
+
+```{r}
+model %>% coef()
+```
+
+```{r}
+model %>% confint()
+```
+
+```{r}
+model %>% 
+  predict(tibble(lstat = c(5, 10, 15)),
+          interval = "confidence")
+```
+
+```{r}
+model %>% 
+  predict(tibble(lstat = c(5, 10, 15)),
+          interval = "prediction")
+```
+
+```{r}
+Boston %>% 
+  ggplot() +
+  geom_point(aes(x = lstat, y = medv)) + 
+  geom_line(aes(x = lstat, y = model$fitted.values), color = "red")
+```
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model)
+```
+
+```{r}
+plot1 <- model %>% ggplot(aes(x = model$fitted.values, y = residuals(model))) + geom_point() +
+  geom_smooth(method = "auto", color = "red") + labs(title = "Residuals vs fitted")
+plot2 <- model %>% ggplot(aes(x = model$fitted.values, y = rstudent(model))) + geom_point() +
+  geom_smooth(method = "auto", color = "red") + labs(title = "Studentized Residuals vs fitted")
+plot3 <- model %>% ggplot(aes(x = hatvalues(model), y = rstudent(model))) + geom_point() +
+  geom_smooth(method = "auto", color = "red") + labs(title = "Studentized Residuals vs leverage")
+grid.arrange(plot1, plot2, plot3, ncol = 2)
+```
+
+```{r}
+which.max(hatvalues(model))
+```
+
+# Multiple
+
+```{r}
+model2 <- lm(data = Boston, 
+             medv~.)
+model2 %>% summary()
+```
+
+```{r}
+summary(model2)$r.squared
+```
+
+#W RSE
+```{r}
+summary(model2)$sigma
+```
+
+```{r}
+library(car)
+```
+
+```{r}
+vif(model2)
+```
+
+```{r}
+model3 <- update(model2, ~.-age)
+model3 %>% summary
+```
+
+# 3.6.2
+
+```{r}
+model4 <- lm(data = Boston, 
+             formula = medv ~ lstat + I(lstat^2))
+model4 %>% summary()
+```
+
+Zamiast I() można użyć też funkcji poly() - wtedy trzeba dodać "raw = T", bo inaczej wartości wielomianu są orthogonal (może ktoś wyjaśni). Poly() dodaje nam wszystkie wielomiany (od 1 do tego, któy weźmiemy)
+
+```{r}
+lm(data = Boston, 
+             formula = medv ~ poly(lstat, 2, raw = T)) %>% summary()
+```
+
+```{r}
+Boston %>% 
+ggplot(aes(x = lstat)) +
+  geom_point(aes(y = medv)) + 
+  geom_line(aes(y = model4$fitted.values), color = "red", size = 2)
+```
+
+```{r}
+anova(model3, model4)
+```
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model4)
+```
+
+
+```{r}
+Boston %>% 
+ggplot(aes(x = lstat)) +
+  geom_point(aes(y = medv)) + 
+  geom_line(aes(y = lm(data = Boston, formula = medv ~poly(lstat, 5, raw = T))$fitted.values), color = "red", size = 2)
+```
+
+```{r}
+lm(data = Boston, 
+   formula = medv ~log(rm)) %>% summary()
+```
+
+```{r}
+Boston %>% 
+ggplot(aes(x = rm)) +
+  geom_point(aes(y = medv)) + 
+  geom_line(aes(y = lm(data = Boston, formula = medv ~log(rm))$fitted.values), color = "red", size = 2)
+```
+
+
+# 3.6.6.
+
+```{r}
+Carseats %>% glimpse()
+```
+
+
+```{r}
+model <- lm(Sales ~. + Income:Advertising + Price:Age, data = Carseats)
+model %>% summary()
+```
+
+```{r}
+Carseats$ShelveLoc %>% contrasts()
+```
+
