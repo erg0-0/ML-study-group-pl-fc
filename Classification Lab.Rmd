@@ -1,0 +1,226 @@
+---
+title: "Classification Lab"
+author: "Igor Adamiec"
+date: "6/24/2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(ISLR)
+library(broom)
+```
+
+```{r}
+data("Smarket")
+```
+
+```{r}
+Smarket %>% names()
+```
+
+```{r}
+Smarket %>% 
+  summary()
+```
+
+```{r}
+Smarket %>% 
+  select_if(is.numeric) %>% 
+  cor() %>% 
+  round(digits = 4)
+```
+
+```{r}
+attach(Smarket)
+plot(Volume)
+```
+
+```{r}
+Smarket %>% 
+  ggplot(aes(x = 1:nrow(Smarket), y = Volume )) +
+  geom_point(alpha = .4)
+
+```
+
+# Logistic regression
+
+```{r}
+glm.fits <- glm(formula = Direction ~Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+                data = Smarket, 
+                family = "binomial")
+
+glm.fits %>% 
+  summary()
+```
+
+```{r}
+glm.fits %>% 
+  tidy()
+```
+
+```{r}
+glm.fits %>% 
+  augment()
+```
+
+```{r}
+glm.fits %>% 
+  glance()
+```
+
+```{r}
+glm.probs <- predict(glm.fits, 
+                     type = "response")
+glm.probs[1:10]
+```
+
+```{r}
+Direction %>% contrasts()
+```
+
+```{r}
+glm.pred <- ifelse(glm.probs > .5, "Up", "Down")
+glm.pred[1:10]
+```
+
+```{r}
+cm <- table(actual = Direction,
+      predicted = glm.pred)
+cm
+```
+
+```{r}
+sum(diag(cm))/sum(cm)
+```
+
+```{r}
+mean(glm.pred==Direction)
+```
+
+## Training error rate
+
+```{r}
+1 - sum(diag(cm))/sum(cm)
+```
+
+```{r}
+train <- (Year < 2005)
+Smarket.2005 <- Smarket[!train,]
+dim(Smarket.2005)
+Direction.2005 <- Direction[!train]
+```
+
+```{r}
+glm.fits <- glm(formula = Direction ~ Lag1 + Lag2 + Lag3+ Lag4 + Lag5 + Volume,
+                data = Smarket,
+                family = "binomial",
+                subset = train)
+glm.probs <- predict(glm.fits, Smarket.2005, type = "response")
+```
+
+```{r}
+glm.pred <- ifelse(glm.probs >.5, "Up", "Down")
+```
+
+```{r}
+cm <- table(actual = Direction.2005,
+            predicted = glm.pred)
+cm
+```
+
+## Test error rate
+
+```{r}
+mean(glm.pred != Direction.2005)
+```
+
+```{r}
+glm.fits <- glm(formula = Direction ~ Lag1 + Lag2,
+               data = Smarket,
+               family = "binomial",
+               subset = train)
+
+glm.probs <- predict(glm.fits, Smarket.2005, type = "response")
+glm.pred <- ifelse(glm.probs > .5, "Up", "Down")
+cm <- table(actual = Direction.2005,
+            predicted = glm.pred)
+cm
+mean(glm.pred != Direction.2005)
+```
+
+```{r}
+predict(glm.fits, newdata = tibble(Lag1 = c(1.2, 1.5),
+                                   Lag2 = c(1.1, -0.8)),
+        type = "response")
+```
+
+# LDA
+
+```{r}
+lda.fit <- lda(formula = Direction ~ Lag1 + Lag2,
+               data = Smarket,
+               subset = train)
+lda.fit
+```
+
+```{r}
+lda.fit %>% summary()
+```
+
+```{r}
+lda.fit %>% plot()
+```
+
+```{r}
+names(lda.fit)
+```
+
+```{r}
+lda.pred <- predict(lda.fit, Smarket.2005)
+lda.pred %>% names()
+```
+
+```{r}
+lda.class <- lda.pred$class
+```
+
+```{r}
+table(actual = Direction.2005,
+      predicted = lda.class)
+```
+
+```{r}
+mean(lda.class == Direction.2005)
+```
+
+```{r}
+sum(lda.pred$posterior[,1] >= .5 )
+sum(lda.pred$posterior[,1] < .5 )
+```
+
+```{r}
+lda.pred$posterior[1:20,1]
+```
+
+```{r}
+lda.class[1:20]
+```
+
+```{r}
+sum(lda.pred$posterior[,1] > 0.9)
+```
+
+# QDA
+
+
+
+
+
+
+
+
+
+
+
