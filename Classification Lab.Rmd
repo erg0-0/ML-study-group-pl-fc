@@ -10,6 +10,7 @@ library(MASS)
 library(tidyverse)
 library(ISLR)
 library(broom)
+library(class)
 ```
 
 ```{r}
@@ -213,6 +214,172 @@ sum(lda.pred$posterior[,1] > 0.9)
 ```
 
 # QDA
+
+```{r}
+qda.fit <- qda(formula = Direction ~ Lag1 + Lag2, 
+               data = Smarket,
+               subset = train)
+qda.fit
+```
+
+```{r}
+qda.class <- predict(qda.fit, Smarket.2005)$class
+```
+
+```{r}
+table(actual = Direction.2005,
+      predicted = qda.class)
+```
+
+```{r}
+mean(qda.class == Direction.2005)
+```
+
+# KNN
+
+```{r}
+train.x <- cbind(Lag1, Lag2)[train,]
+test.x <- cbind(Lag1, Lag2)[!train,]
+train.Direction <- Direction[train]
+```
+
+```{r}
+set.seed(1)
+```
+
+```{r}
+knn.pred <- knn(train.x, test.x, 
+                train.Direction,
+                k = 1)
+table(actual = Direction.2005,
+      predicted = knn.pred)
+```
+
+```{r}
+(83+43)/252
+```
+
+```{r}
+knn.pred <- knn(train.x, test.x, 
+                train.Direction,
+                k = 3)
+table(actual = Direction.2005,
+      predicted = knn.pred)
+```
+
+```{r}
+(48+87)/252
+```
+
+# An Application to Caravan Insurance Data
+
+```{r}
+data("Caravan")
+```
+
+```{r}
+Caravan %>% 
+  dim()
+```
+
+```{r}
+Caravan %>% 
+  attach()
+```
+
+```{r}
+Purchase %>% 
+  summary()
+```
+
+```{r}
+348/5474
+```
+
+```{r}
+standarized.x <- scale(Caravan[,-86])
+```
+
+
+```{r}
+var(Caravan[,1])
+var(Caravan[,2])
+```
+
+```{r}
+var(standarized.x[,1])
+var(standarized.x[,2])
+```
+
+```{r}
+test <- 1:1000
+train.x <- standarized.x[-test,]
+test.x <- standarized.x[test,]
+train.y <- Purchase[-test]
+test.y <- Purchase[test]
+```
+
+```{r}
+set.seed(1)
+knn.pred <- knn(train.x, test.x, train.y, k = 1)
+mean(test.y != knn.pred)
+```
+
+```{r}
+mean(test.y != "No")
+```
+
+```{r}
+table(test.y,
+      knn.pred)
+```
+
+```{r}
+round(9/(9+68),3)
+```
+
+```{r}
+knn.pred <- knn(train.x, test.x, train.y, k = 3)
+table(test.y,
+      knn.pred)
+```
+
+```{r}
+5/26
+```
+
+```{r}
+knn.pred <- knn(train.x, test.x, train.y, k = 5)
+table(test.y,
+      knn.pred)
+```
+
+```{r}
+4/15
+```
+
+```{r}
+glm.fits <- glm(Purchase ~., data = Caravan, family = binomial, subset = -train)
+```
+
+```{r}
+glm.probs <- predict(glm.fits, Caravan[test,], type = "response")
+lm.pred <- ifelse(glm.probs > .5, "Yes", "No")
+table(test.y, lm.pred)
+```
+
+```{r}
+lm.pred <- ifelse(glm.probs > .25, "Yes", "No")
+table(test.y, lm.pred)
+```
+
+```{r}
+13/(13+19)
+```
+
+
+
+
 
 
 
