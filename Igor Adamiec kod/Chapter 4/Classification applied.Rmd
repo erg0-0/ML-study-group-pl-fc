@@ -1,0 +1,162 @@
+---
+title: "Classification applied"
+author: "Igor Adamiec"
+date: "7/12/2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+```
+
+# 10. 
+## a)
+
+```{r}
+data("Weekly")
+```
+
+```{r}
+summary(Weekly)
+```
+
+```{r}
+glimpse(Weekly)
+```
+
+```{r}
+library(GGally)
+```
+
+```{r message=FALSE}
+Weekly %>% ggpairs()
+```
+
+```{r}
+Weekly %>% 
+  ggplot(aes(x = Year, y = Volume))+
+  geom_point(aes(color = Direction)) +
+  facet_grid(~Direction)
+```
+
+## b)
+
+```{r}
+model_10b <- glm(data = Weekly,
+                 formula = Direction ~ .-Year-Today,
+                 family = "binomial")
+model_10b %>% summary()
+```
+
+## c)
+
+```{r}
+Weekly$Direction %>% contrasts()
+```
+
+
+```{r}
+prob_1 <- predict(model_10b, newdata = Weekly, type = "response")
+
+pred_1 <- ifelse(prob_1 > .5, "Up", "Down")
+```
+
+```{r}
+cm_1 <- table(actual = Weekly$Direction, predicted = pred_1)
+cm_1
+```
+
+## d)
+
+```{r}
+training_set <- Weekly %>% 
+  filter(between(Year, 1990, 2008))
+test_set <- Weekly %>% 
+  filter(Year > 2008)
+```
+
+```{r}
+model_lr <- glm(data = Weekly,
+                formula = Direction ~ Lag2,
+                family = "binomial")
+prob_lr <- predict(model_lr, newdata = test_set, type = "response")
+pred_lr <- ifelse(prob_lr > .5, "Up", "Down")
+
+table(actual = test_set$Direction, predicted = pred_lr)
+```
+
+## e)
+
+```{r}
+model_lda <- lda(formula = Direction ~ Lag2, data = training_set)
+                 
+pred_lda <- predict(model_lda, test_set)$class
+
+table(actual = test_set$Direction, pred_lda)
+```
+
+## f)
+
+```{r}
+model_qda <- qda(formula = Direction~ Lag2,
+                 data = training_set)
+pred_qda <- predict(model_qda, test_set)$class
+
+table(actual = test_set$Direction, pred_qda)
+```
+
+## g)
+
+```{r}
+model_knn <- knn(train = training_set %>% dplyr::select(Lag2),
+                 test = test_set %>% dplyr::select(Lag2),
+                 cl = training_set$Direction,
+                 k = 1)
+
+```
+```{r}
+table(actual = test_set$Direction, model_knn)
+```
+
+## h)
+
+```{r}
+library(Metrics)
+```
+
+```{r}
+all_in <- tibble(actual = test_set$Direction, pred_lr, pred_lda, pred_qda, model_knn) %>% mutate(pred_lr = as.factor(pred_lr))
+all_in$pred_lr %>% levels()
+```
+
+```{r}
+all_in %>% summarise_all(~accuracy(all_in$actual, .))
+
+```
+
+
+```{r}
+set.seed(1)
+all_k <- c()
+all_acc <- c()
+for (k in 1:100) {
+  model <- knn(train = training_set %>% dplyr::select(Lag2),
+               test = test_set %>% dplyr::select(Lag2),
+               cl <- training_set$Direction,
+               k = k)
+  accuracy <- accuracy(test_set$Direction, model)
+  all_k <- c(all_k, k)
+  all_acc <- c(all_acc, accuracy)
+}
+
+```
+
+```{r}
+knn <- tibble(all_k, all_acc)
+```
+```{r}
+knn %>% ggplot(aes(x = all_k, y = all_acc)) + geom_point()
+```
+
