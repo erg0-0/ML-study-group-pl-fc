@@ -1,0 +1,153 @@
+---
+title: "Classification applied 2"
+author: "Igor Adamiec"
+date: "7/12/2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(ISLR)
+library(tidyverse)
+library(class)
+```
+
+# 11
+## a)
+
+```{r}
+data("Auto")
+```
+
+```{r}
+Auto <- Auto %>% 
+  mutate(mpg01 = as.factor(ifelse(mpg > median(mpg), 1, 0)),
+         origin = as.factor(origin))
+
+Auto %>% head()
+```
+
+### vs cylinders
+
+```{r}
+Auto %>% ggplot(aes(y = cylinders, x = mpg01)) + geom_boxplot()
+```
+
+### vs displacement
+
+```{r}
+Auto %>% ggplot(aes(x = mpg01, displacement)) + geom_boxplot()
+```
+
+### vs horsepower
+
+```{r}
+Auto %>% ggplot(aes(x = mpg01, horsepower)) + geom_boxplot()
+```
+
+### vs weight
+
+```{r}
+Auto %>% ggplot(aes(x = mpg01, weight)) + geom_boxplot()
+```
+
+### vs acceleration
+
+```{r}
+Auto %>% ggplot(aes(x = mpg01, acceleration)) + geom_boxplot()
+```
+
+### vs year
+
+```{r}
+Auto %>% ggplot(aes(x = year, fill = mpg01)) + geom_bar()
+```
+### vs origin
+
+```{r}
+Auto %>% ggplot(aes(x = origin, fill = mpg01)) + geom_bar()
+```
+
+### horsepower vs acceleration
+
+```{r}
+Auto %>% ggplot(aes(x = horsepower, y = acceleration, color = mpg01)) + geom_point()
+```
+
+```{r}
+Auto %>% ggplot(aes(x = origin, y = acceleration)) + geom_boxplot()
+```
+
+```{r}
+library(rsample)
+```
+
+```{r}
+split <- initial_split(Auto, prop = .80)
+```
+
+```{r}
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+```{r}
+model_lda <- lda(
+  formula = mpg01 ~ cylinders + displacement + horsepower + weight + acceleration + year, data = Auto
+                 )
+```
+
+```{r}
+lda_pred <- predict(model_lda, test_set)$class
+```
+
+```{r}
+mean(test_set$mpg01 != lda_pred)
+```
+
+```{r}
+model_qda <- qda(
+  formula = mpg01 ~ cylinders + displacement + horsepower + weight + acceleration + year, data = Auto
+                 )
+```
+
+```{r}
+qda_pred <- predict(model_qda, test_set)$class
+```
+
+```{r}
+mean(test_set$mpg01 != qda_pred)
+```
+
+```{r}
+model_lr <- glm(formula = mpg01 ~ cylinders + displacement + horsepower + weight + acceleration + year, data = Auto,
+                family = "binomial")
+lr_prob <- predict(model_lr, newdata = test_set, type = "response")
+lr_pred <- ifelse(lr_prob > .5, 1, 0)
+```
+
+```{r}
+mean(test_set$mpg01 != lr_pred)
+```
+```{r}
+library(Metrics)
+```
+
+
+```{r}
+set.seed(1)
+all_k <- c()
+all_acc <- c()
+for (k in 1:100) {
+  model <- knn(train = train_set %>% dplyr::select(cylinders, displacement, horsepower, weight, acceleration, year),
+               test = test_set %>% dplyr::select(cylinders, displacement, horsepower, weight, acceleration, year),
+               cl <- train_set$mpg01,
+               k = k)
+  accuracy <- accuracy(test_set$mpg01, model)
+  all_k <- c(all_k, k)
+  all_acc <- c(all_acc, accuracy)
+}
+tibble(k = all_k, accuracy = all_acc) %>% arrange(desc(accuracy))
+```
+
+

@@ -1,0 +1,62 @@
+---
+title: "Classification applied 3"
+author: "Igor Adamiec"
+date: "7/13/2019"
+output: html_document
+---
+
+```{r}
+Power <- function() {
+  print(2^3)
+}
+```
+
+```{r}
+Power()
+```
+
+
+
+```{r}
+Power2 <- function(a, x) {
+  print(a ^ x)
+}
+
+Power2(3, 8)
+```
+
+```{r}
+x <- list()
+x[[1]] <- c(10, 3)
+x[[2]] <- c(8, 17)
+x[[3]] <- c(131,3)
+x
+```
+
+```{r}
+for (i in 1:3) {
+  Power2(x[[i]][1], x[[i]][2])
+}
+```
+
+```{r}
+Power3 <- function(a, x) {
+  a ^x
+}
+
+b <- Power3(2,2)
+b
+```
+
+```{r}
+pow <- Power3(1:10,2)
+pow
+```
+```{r}
+ggplot(data = tibble(pow), aes(x = 1:10, y = pow)) + geom_point() +
+  labs(title = "function Power3",
+       x = "Number powered to 2",
+       y = "Result") +
+  scale_y_log10()
+```
+
