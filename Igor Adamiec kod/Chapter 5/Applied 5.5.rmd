@@ -1,0 +1,87 @@
+---
+title: "Applied 5.5"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(ISLR)
+library(broom)
+library(tidyverse)
+```
+
+# a)
+
+```{r}
+model_a <- glm(default ~income + balance, data = Default, family = "binomial")
+
+pred_a <- ifelse(predict(model_a, Default, type = "response") > .5, "Yes", "No")
+
+table(actual = Default$default, pred_a)
+
+mean(Default$default != pred_a)
+```
+
+```{r}
+
+```
+
+
+# b)
+
+```{r}
+split_b <- initial_split(Default, split = .8)
+train_set_b <- training(split_b)
+test_set_b <- testing(split_b)
+```
+
+```{r}
+model_b <- glm(data = train_set_b,
+               formula = default ~ income + balance,
+               family = "binomial")
+pred_b <- ifelse(predict(model_b, newdata = test_set_b, type = "response") > .5, "Yes", "No")
+mean(test_set_b$default != pred_b)
+
+```
+
+# c)
+
+```{r}
+split_c_1 <- initial_split(Default, split = .8)
+train_set_c_1  <- training(split_c_1 )
+test_set_c_1  <- testing(split_c_1 )
+
+split_c_2 <- initial_split(Default, split = .8)
+train_set_c_2 <- training(split_c_2)
+test_set_c_2 <- testing(split_c_2)
+
+split_c_3 <- initial_split(Default, split = .8)
+train_set_c_3 <- training(split_c_3)
+test_set_c_3 <- testing(split_c_3)
+```
+
+```{r}
+model_c_1 <- glm(data = train_set_c_1,
+               formula = default ~ income + balance,
+               family = "binomial")
+pred_c_1 <- ifelse(predict(model_c_1, newdata = test_set_c_1, type = "response") > .5, "Yes", "No")
+mean(test_set_c_1$default != pred_c_1)
+```
+
+```{r}
+model_c_2 <- glm(data = train_set_c_2,
+               formula = default ~ income + balance,
+               family = "binomial")
+pred_c_2 <- ifelse(predict(model_c_2, newdata = test_set_c_2, type = "response") > .5, "Yes", "No")
+mean(test_set_c_2$default != pred_c_2)
+```
+
+```{r}
+model_c_3 <- glm(data = train_set_c_3,
+               formula = default ~ income + balance,
+               family = "binomial")
+pred_c_3 <- ifelse(predict(model_c_3, newdata = test_set_c_3, type = "response") > .5, "Yes", "No")
+mean(test_set_c_3$default != pred_c_3)
+```

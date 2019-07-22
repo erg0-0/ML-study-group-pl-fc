@@ -1,0 +1,102 @@
+---
+title: "Leave-One-Out Cross-Validation"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+library(boot)
+```
+
+```{r}
+glm.fit <- glm(data = Auto, formula = mpg ~ horsepower)
+coef(glm.fit)
+```
+
+```{r}
+lm.fit <- lm(data = Auto,
+             formula = mpg ~ horsepower)
+coef(lm.fit)
+```
+
+```{r}
+cv.err <- cv.glm(Auto, glm.fit) # domyślnie k = n
+cv.err$delta
+```
+
+```{r}
+cv.error <- rep(0, 5)
+for (i in 1:5) {
+  glm.fit <- glm(mpg ~ poly(horsepower, i), data = Auto)
+  cv.error[i] <- cv.glm(Auto, glm.fit)$delta[1]
+}
+
+cv.error
+```
+
+# Jak ja bym to zrobił
+
+```{r}
+library(rsample)
+```
+
+```{r}
+cv_split <- vfold_cv(Auto, v = nrow(Auto))
+cv_split
+```
+
+```{r}
+cv_data <- cv_split %>% 
+  mutate(train = map(splits, ~training(.x)),
+         validate = map(splits, ~testing(.x)))
+cv_data
+```
+
+```{r}
+cv_models_lm <- cv_data %>% 
+  mutate(model_1 = map(train, ~lm(formula = mpg~poly(horsepower, 1), data = .x)),
+         model_2 = map(train, ~lm(formula = mpg~poly(horsepower, 2), data = .x)),
+         model_3 = map(train, ~lm(formula = mpg~poly(horsepower, 3), data = .x)),
+         model_4 = map(train, ~lm(formula = mpg~poly(horsepower, 4), data = .x)),
+         model_5 = map(train, ~lm(formula = mpg~poly(horsepower, 5), data = .x)))
+
+cv_models_lm
+```
+
+```{r}
+cv_prep_lm <- cv_models_lm %>% 
+  mutate(validate_actual = map_dbl(validate, ~.x$mpg))
+
+cv_prep_lm
+```
+
+```{r}
+cv_eval_lm <- cv_prep_lm %>% 
+  mutate(pred_1 = map2_dbl(model_1, validate, ~predict(.x, .y)),
+         pred_2 = map2_dbl(model_2, validate, ~predict(.x, .y)),
+         pred_3 = map2_dbl(model_3, validate, ~predict(.x, .y)),
+         pred_4 = map2_dbl(model_4, validate, ~predict(.x, .y)),
+         pred_5 = map2_dbl(model_5, validate, ~predict(.x, .y)),
+         mae_1 = (validate_actual - pred_1)^2,
+         mae_2 = (validate_actual - pred_2)^2,
+         mae_3 = (validate_actual - pred_3)^2,
+         mae_4 = (validate_actual - pred_4)^2,
+         mae_5 = (validate_actual - pred_5)^2
+         )
+
+cv_eval_lm %>% summarise(cv_mae_1 = mean(mae_1),
+                         cv_mae_2 = mean(mae_2),
+                         cv_mae_3 = mean(mae_3),
+                         cv_mae_4 = mean(mae_4),
+                         cv_mae_5 = mean(mae_5))
+```
+
+
+
+
+
+
+
+

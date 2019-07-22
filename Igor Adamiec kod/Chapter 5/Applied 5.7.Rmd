@@ -1,0 +1,55 @@
+---
+title: "Applied 5.7"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+# A)
+
+```{r}
+glm(data = Weekly,
+    formula = Direction ~ Lag1 + Lag2,
+    family = "binomial") %>% summary()
+```
+
+# B)
+
+```{r}
+model_b <- glm(data = Weekly,
+    formula = Direction ~ Lag1 + Lag2,
+    family = "binomial", subset = 2:nrow(Weekly))
+
+model_b %>% summary()
+```
+
+# C)
+
+```{r}
+predict(model_b, newdata = Weekly[1,], type = "response")
+Weekly[1,]$Direction
+```
+
+# D)
+
+```{r}
+total <- c()
+for (i in 1:nrow(Weekly)) {
+  model <- glm(data = Weekly[-i,],
+    formula = Direction ~ Lag1 + Lag2,
+    family = "binomial")
+  pred <- ifelse(predict(model, newdata = Weekly[i,], type = "response") > .5, "Up", "Down")
+  total <- c(total, pred == Weekly[i,]$Direction)
+}
+```
+
+# E)
+
+```{r}
+total %>% mean()
+```
+
+```{r}
+mean(ifelse(predict(model_b, newdata = Weekly, type = "response") >.5, "Up", "Down") == Weekly$Direction )
+```
+

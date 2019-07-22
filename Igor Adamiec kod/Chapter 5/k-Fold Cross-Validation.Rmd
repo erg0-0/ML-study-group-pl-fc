@@ -1,0 +1,80 @@
+---
+title: "k-Fold Cross-Validation"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+```
+
+```{r}
+set.seed(17)
+cv.error.10 <- rep(0, 10)
+for (i in 1:10) {
+  glm.fit <- glm(mpg ~ poly(horsepower, i), data = Auto)
+  cv.error.10[i] <- cv.glm(Auto, glm.fit, K = 10)$delta[1]
+}
+
+cv.error.10
+```
+
+#jak ja bym to zrobił
+
+```{r}
+set.seed(17)
+
+cv_split <- vfold_cv(Auto, v = 10)
+cv_data <- cv_split %>% 
+  mutate(train = map(splits, ~training(.x)),
+         validate = map(splits, ~testing(.x)))
+
+cv_data
+```
+```{r}
+library(rlang)
+```
+
+```{r}
+params <- 1:5
+
+names <- paste0(rep("model", each = length(params)), "_", 1:5)
+model_fun <- glue::glue('map(train, ~lm(formula = mpg ~ poly(horsepower, {1:5}), data = .x))') %>% paste(., collapse = ";")
+
+cv_models_lm <- cv_data %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(-1:-(length(params)-1), ~names)
+cv_models_lm
+```
+
+```{r}
+cv_prep_lm <- cv_models_lm %>% 
+  mutate(validate_actual = map(validate, ~.x$mpg))
+cv_prep_lm
+```
+
+```{r}
+names_pred <- paste0(rep("pred", each = length(params)), "_", 1:5)
+names_mae <- paste0(rep("mae", each = length(params)), "_", 1:5)
+
+pred_fun <- glue::glue('map2({paste0("model_", 1:5)}, validate, ~predict(.x, .y))') %>% paste(., collapse = ";")
+mae_fun <- glue::glue('map2(validate_actual, {paste0("pred_", 1:5)}, ~(.x - .y)^2)')%>% paste(., collapse = ";")
+
+names_mean_mae <- paste0(rep("mean_mae", each = length(params)), "_", 1:5)
+mean_mae_fun <- glue::glue('map_dbl({paste0("mae_", 1:5)}, ~mean(.x))')%>% paste(., collapse = ";")
+```
+
+```{r}
+cv_prep_lm %>% 
+  mutate(!!! parse_exprs(pred_fun)) %>% 
+  rename_at(vars(starts_with("map")), ~names_pred) %>% 
+  mutate(!!! parse_exprs(mae_fun)) %>% 
+  rename_at(vars(starts_with("map")), ~names_mae) %>% 
+  mutate(!!! parse_exprs(mean_mae_fun)) %>% 
+  rename_at(vars(starts_with("map")), ~names_mean_mae) %>% 
+  select(starts_with("mean")) %>% 
+  summarise_all(mean)
+```
+
+

@@ -1,0 +1,61 @@
+---
+title: "The Bootstrap"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+# Estimating the Accuracy of a Statistic of Interest
+
+```{r}
+library(ISLR)
+library(boot)
+```
+
+```{r}
+alpha.fn <- function(data, index) {
+  X <- data$X[index]
+  Y <- data$Y[index]
+  return((var(Y) - cov(X, Y))/(var(X) + var(Y) - 2*cov(X,Y)))
+}
+```
+
+```{r}
+alpha.fn(Portfolio, 1:100)
+```
+
+```{r}
+set.seed(1)
+alpha.fn(Portfolio, sample(100, 100, replace = T))
+```
+
+```{r}
+boot(Portfolio, alpha.fn, R = 1000)
+```
+
+# Estimating the Accuracy of a Linear Regression Model
+
+```{r}
+boot.fn <- function(data, index) {
+  return(coef(lm(mpg ~ horsepower, data = data, subset = index)))
+}
+```
+
+```{r}
+boot.fn(Auto, 1:392)
+```
+
+```{r}
+set.seed(1)
+boot.fn(Auto, sample(392, 392, replace = T))
+boot.fn(Auto, sample(392, 392, replace = T))
+```
+
+```{r}
+boot(Auto, boot.fn, 1000)
+```
+
+```{r}
+summary(lm(mpg ~ horsepower, data = Auto))$coef
+```
+

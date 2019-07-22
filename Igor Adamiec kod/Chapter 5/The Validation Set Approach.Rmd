@@ -1,0 +1,101 @@
+---
+title: "The Validation Set Approach"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+```
+
+```{r}
+set.seed(1)
+train <- sample(392, 196)
+```
+
+```{r}
+lm.fit <- lm(data = Auto,
+             formula = mpg ~ horsepower,
+             subset = train)
+```
+
+```{r}
+attach(Auto)
+mean((mpg-predict(lm.fit, Auto))[-train]^2) # MSE
+```
+
+```{r}
+lm.fit2 <- lm( mpg ~ poly(horsepower, 2), data = Auto, subset = train)
+mean((mpg-predict(lm.fit2, Auto))[-train]^2) #MSE dla regresji do kwadratu
+```
+
+```{r}
+lm.fit3 <- lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
+mean((mpg-predict(lm.fit3, Auto))[-train]^2) #MSE dla regresji do trzeciej potęgi
+```
+
+# Inny podział
+
+```{r}
+set.seed(2)
+train <- sample(392, 196)
+```
+
+```{r}
+lm.fit <- lm(data = Auto,
+             formula = mpg ~ horsepower,
+             subset = train)
+```
+
+```{r}
+attach(Auto)
+mean((mpg-predict(lm.fit, Auto))[-train]^2) # MSE
+```
+
+```{r}
+lm.fit2 <- lm( mpg ~ poly(horsepower, 2), data = Auto, subset = train)
+mean((mpg-predict(lm.fit2, Auto))[-train]^2) #MSE dla regresji do kwadratu
+```
+
+```{r}
+lm.fit3 <- lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
+mean((mpg-predict(lm.fit3, Auto))[-train]^2) #MSE dla regresji do trzeciej potęgi
+```
+
+# Jak ja bym to zrobil
+
+```{r}
+library(rsample)
+library(tidyverse)
+```
+
+```{r}
+set.seed(1)
+split <- initial_split(Auto, prop = .5)
+training_set <- training(split)
+test_set <- testing(split)
+
+```
+
+```{r}
+lm.fit <- lm(data = training_set, formula = mpg~ horsepower)
+mean((test_set$mpg-predict(lm.fit, newdata = test_set))^2) # MSE
+```
+
+```{r}
+lm.fit2 <- lm(data = training_set, formula = mpg~ poly(horsepower, 2))
+mean((test_set$mpg-predict(lm.fit2, newdata = test_set))^2) # MSE
+```
+
+```{r}
+lm.fit3 <- lm(data = training_set, formula = mpg~ poly(horsepower, 3))
+mean((test_set$mpg-predict(lm.fit3, newdata = test_set))^2) # MSE
+```
+
+
+
+
+
+
+

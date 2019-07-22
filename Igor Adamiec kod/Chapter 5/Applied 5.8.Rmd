@@ -1,0 +1,50 @@
+---
+title: "Applied 5.8"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+set.seed(1)
+x <- rnorm(100)
+y <-  x-2*x^2+rnorm(100)
+df <- tibble(x,y)
+```
+
+```{r}
+tibble(x, y) %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_point()
+```
+
+```{r}
+set.seed(1)
+v_error <- rep(0, 4)
+for (i in 1:4) {
+  glm_fit <- glm(y ~poly(x, i), data = df)
+  v_error[i] <- cv.glm(df, glm_fit)$delta[1]
+}
+
+v_error
+```
+
+```{r}
+set.seed(2)
+v_error <- rep(0, 4)
+for (i in 1:4) {
+  glm_fit <- glm(y ~poly(x, i), data = df)
+  v_error[i] <- cv.glm(df, glm_fit)$delta[1]
+}
+
+v_error
+```
+
+
+```{r}
+for (i in 1:4) {
+  glm_fit <- glm(y ~poly(x, i), data = df)
+  print(summary(glm_fit))
+}
+```
+
