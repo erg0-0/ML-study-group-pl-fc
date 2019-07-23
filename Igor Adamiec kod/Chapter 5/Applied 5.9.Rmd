@@ -1,0 +1,49 @@
+---
+title: "Applied 5.9"
+author: "Igor Adamiec"
+date: "7/22/2019"
+output: html_document
+---
+
+```{r}
+Boston$medv %>% mean()
+```
+
+```{r}
+sd(Boston$medv)/sqrt(nrow(Boston))
+```
+
+```{r}
+boot.fn <- function(data,index) return(mean(data[index]))
+boot <- boot(Boston$medv, boot.fn, R= 1000)
+boot
+```
+
+```{r}
+t.test(Boston$medv)
+```
+
+```{r}
+boot$t0 - 2*0.4136921
+boot$t0 + 2*0.4136921
+
+```
+
+```{r}
+median(Boston$medv)
+```
+
+```{r}
+boot_med <- function(data, index) return(median(data[index]))
+boot(Boston$medv, boot_med, R = 1000)
+```
+
+```{r}
+quantile(Boston$medv, probs = .1)
+```
+
+```{r}
+boot_ten_perc <- function(data, index) return(quantile(data[index], probs = .1))
+boot(Boston$medv, boot_ten_perc, R = 1000)
+```
+
