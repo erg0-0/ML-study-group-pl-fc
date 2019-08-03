@@ -39,6 +39,12 @@ boot(Boston$medv, boot_med, R = 1000)
 ```
 
 ```{r}
+Boston$medv[1]
+Boston %>% nrow()
+```
+
+
+```{r}
 quantile(Boston$medv, probs = .1)
 ```
 

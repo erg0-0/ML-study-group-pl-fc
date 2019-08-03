@@ -22,7 +22,7 @@ lm.fit <- lm(data = Auto,
 
 ```{r}
 attach(Auto)
-mean((mpg-predict(lm.fit, Auto))[-train]^2) # MSE
+mean((mpg-predict(lm.fit, Auto))[-train]^2) # MAE
 ```
 
 ```{r}
@@ -62,6 +62,15 @@ mean((mpg-predict(lm.fit2, Auto))[-train]^2) #MSE dla regresji do kwadratu
 lm.fit3 <- lm(mpg ~ poly(horsepower, 3), data = Auto, subset = train)
 mean((mpg-predict(lm.fit3, Auto))[-train]^2) #MSE dla regresji do trzeciej potęgi
 ```
+```{r}
+Auto %>% 
+  ggplot(aes(y = mpg, x = horsepower)) + geom_point()
+```
+
+```{r}
+
+```
+
 
 # Jak ja bym to zrobil
 

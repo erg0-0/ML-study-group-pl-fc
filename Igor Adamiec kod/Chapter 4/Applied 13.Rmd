@@ -1,0 +1,173 @@
+---
+title: "Classification applied 13"
+author: "Igor Adamiec"
+date: "21 lipca 2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(rsample)
+library(tidyverse)
+library(fastDummies)
+data(Boston)
+
+```
+```{r}
+
+set.seed(123)
+
+Boston <- Boston %>% mutate(crime_rate_high = as.factor(as.numeric(crim > median(crim))),
+                            chas = as.factor(chas)) %>% dummy_cols(select_columns = c("chas"), remove_most_frequent_dummy = T) %>% select(-chas)
+split <- initial_split(Boston, prop = .8)
+training_set <- training(split) %>% select(-crim)
+test_set <- testing(split) %>% select(-crim)
+```
+
+```{r}
+training_set %>% glimpse
+```
+
+```{r}
+library(GGally)
+```
+
+```{r message= FALSE}
+training_set %>% ggpairs()
+```
+
+```{r}
+training_set %>% select_if(is.numeric) %>% cor(method = "pearson")
+```
+
+```{r}
+training_set %>% 
+  ggplot(aes(x = rad, y = tax)) + geom_point()
+```
+
+```{r}
+for(i in training_set %>% select_if(is.numeric) %>% colnames()) {
+  print(training_set %>% 
+    ggplot(aes_string(x = "chas", y = i)) +geom_boxplot())
+}
+```
+
+```{r}
+for(i in training_set %>% select_if(is.numeric) %>% colnames()) {
+  print(training_set %>% 
+    ggplot(aes_string(x = "crime_rate_high", y = i)) +geom_boxplot())
+}
+```
+
+```{r}
+model_lr_full <- glm(data = training_set, formula = crime_rate_high ~., family = "binomial")
+```
+
+```{r}
+model_lr_full %>% summary()
+```
+
+```{r}
+library(broom)
+library(yardstick)
+library(cowplot)
+library(plotly)
+
+```
+
+```{r}
+options(yardstick.event_first = FALSE)
+```
+
+```{r message = FALSE, warning=FALSE}
+model_lr_full %>% 
+  augment(type.predict = "response") %>% 
+  roc_curve(truth = crime_rate_high, .fitted) %>% 
+  ggplot(aes(x = 1-specificity, y = sensitivity)) + 
+  geom_line(size = 1.1)
+  #geom_abline(slope = 1, intercept = 0, size = 0.4) + 
+
+
+ggplot2::last_plot() %>% ggplotly()
+```
+
+```{r}
+model_lr_full %>% 
+  augment(type.predict = "response") %>% 
+  roc_curve(truth = crime_rate_high, .fitted) %>% 
+  mutate("1-specificity" = 1-specificity) %>% 
+  filter(`1-specificity` > 0.069, `1-specificity` < .071) %>% arrange(`1-specificity`)
+```
+
+```{r}
+lr_full_test_prob <- predict(model_lr_full, newdata = test_set, type = "response")
+lr_full_test_pred <- ifelse(lr_full_test_prob > 0.564037, 1, 0)
+```
+
+```{r}
+library(Metrics)
+```
+
+```{r}
+accuracy(test_set$crime_rate_high, lr_full_test_pred)
+```
+
+```{r}
+model_lr_full %>% tidy()
+```
+
+```{r}
+vars <- c()
+for (i in 1:(model_lr_full %>% tidy() %>% nrow())) {
+  model <- glm(data = if(is_empty(vars)){training_set}else{training_set %>% select(-vars)}, 
+               formula = crime_rate_high~., 
+               family = "binomial")
+  tidy <- model %>% tidy()
+  if (sum(tidy$p.value > .05) == 0) {
+    break
+  }
+  vars <- c(vars, tidy %>% filter(p.value == max(p.value)) %>% pull(term))
+}
+```
+
+
+```{r}
+model_lr_2 <- glm(data = training_set %>% select(-vars), formula = crime_rate_high~., family = "binomial")
+```
+
+```{r}
+model_lr_2 %>% summary()
+```
+
+```{r message = FALSE, warning=FALSE}
+model_lr_2 %>% 
+  augment(type.predict = "response") %>% 
+  roc_curve(truth = crime_rate_high, .fitted) %>% 
+  ggplot(aes(x = 1-specificity, y = sensitivity)) + 
+  geom_line(size = 1.1)
+  #geom_abline(slope = 1, intercept = 0, size = 0.4) + 
+
+
+ggplot2::last_plot() %>% ggplotly()
+```
+
+```{r}
+model_lr_2 %>% 
+  augment(type.predict = "response") %>% 
+  roc_curve(truth = crime_rate_high, .fitted) %>% 
+  mutate("1-specificity" = 1-specificity) %>% 
+  filter(`1-specificity` > 0.089, `1-specificity` < .091) %>% arrange(`1-specificity`)
+```
+
+```{r}
+lr_2_test_prob <- predict(model_lr_2, newdata = test_set, type = "response")
+lr_2_test_pred <- ifelse(lr_2_test_prob > 0.4980611, 1, 0)
+```
+
+```{r}
+accuracy(test_set$crime_rate_high, lr_2_test_pred)
+```
+
+
+
+

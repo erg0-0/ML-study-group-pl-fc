@@ -110,6 +110,7 @@ table(actual = test_set$Direction, pred_qda)
 ## g)
 
 ```{r}
+library(class)
 model_knn <- knn(train = training_set %>% dplyr::select(Lag2),
                  test = test_set %>% dplyr::select(Lag2),
                  cl = training_set$Direction,
