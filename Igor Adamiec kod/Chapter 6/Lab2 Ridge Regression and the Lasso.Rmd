@@ -1,0 +1,77 @@
+---
+title: "Lab 2 Ridge Regression and the Lasso"
+author: "Igor Adamiec"
+date: "11 08 2019"
+output: html_document
+---
+
+```{r}
+library(glmnet)
+```
+```{r}
+x <- model.matrix(Salary~., Hitters)[,-1]
+y <- Hitters$Salary
+```
+
+# Ridge Regression
+
+```{r}
+grid <- 10^seq(10, -2, length = 100)
+
+# Zmienne sa standaryzowane automatycznie w GLMNET. Aby to wylaczyc - standarize = F
+ridge.mod <- glmnet(x, y,
+                     alpha = 0, #0 - ridge regression, 1 - lasso
+                    lambda = grid)
+```
+
+```{r}
+dim(coef(ridge.mod))
+```
+
+```{r}
+ridge.mod$lambda[50]
+
+coef(ridge.mod)[,50]
+
+sqrt(sum(coef(ridge.mod)[-1, 50]^2))
+```
+
+```{r}
+ridge.mod$lambda[60]
+
+coef(ridge.mod)[,60]
+
+sqrt(sum(coef(ridge.mod)[-1, 60]^2))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
