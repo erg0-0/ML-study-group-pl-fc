@@ -1,0 +1,106 @@
+---
+title: "Lab3 PCR and PLS Regression"
+author: "Igor Adamiec"
+date: "12 08 2019"
+output: html_document
+---
+
+# Principal Components Regression
+
+```{r}
+library(pls)
+set.seed(2)
+pcr.fit <- pcr(Salary~., data = Hitters, scale = T, validation = "CV")
+```
+
+```{r}
+summary(pcr.fit)
+```
+
+```{r}
+validationplot(pcr.fit, val.type = "MSEP")
+```
+
+```{r}
+set.seed(1)
+pcr.fit <- pcr(Salary~., data = Hitters, subset = train, scale = T,
+                  validation = "CV")
+validationplot(pcr.fit, val.type = "MSEP")
+```
+
+```{r}
+pcr.pred <- predict(pcr.fit, x[test,], ncomp = 7)
+mean((pcr.pred - y.test)^2)
+```
+
+```{r}
+pcr.fit <- pcr(y~x, scale = T, ncomp = 7)
+summary(pcr.fit)
+```
+
+# Partial Lest Squares
+
+```{r}
+set.seed(1)
+pls.fit <- plsr(Salary~., data = Hitters, subset = train,
+                scale = T, validation = "CV")
+summary(pls.fit)
+```
+
+```{r}
+pls.pred <- predict(pls.fit, x[test,], ncomp = 2)
+mean((pls.pred-y.test)^2)
+```
+
+```{r}
+pls.fit <- plsr(Salary~., data = Hitters, scale = T, ncomp = 2)
+summary(pls.fit)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
