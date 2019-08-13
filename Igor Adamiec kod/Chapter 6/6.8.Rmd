@@ -1,0 +1,183 @@
+---
+title: '6.8'
+author: "Igor Adamiec"
+date: "12 08 2019"
+output: html_document
+---
+
+# a i b
+
+```{r}
+X <- rnorm(100)
+
+epsilon <- rnorm(100)
+
+beta_0 <- 1
+beta_1 <- 2
+beta_2 <- 3
+beta_3 <- 4
+
+Y <- beta_0 + beta_1 * X + beta_2 * X ^2 + beta_3 * X ^3 + epsilon
+```
+
+```{r}
+library(tidyverse)
+```
+
+# c
+
+```{r}
+df <- bind_cols("X" =X, "Y" =Y)
+best_subset <- regsubsets(Y ~ poly(X, 10), data = df) %>% summary()
+```
+
+```{r}
+#Cp
+best_subset$cp %>% which.min()
+
+#BIC
+best_subset$bic %>% which.min()
+
+#Adjusted R2
+best_subset$adjr2 %>% which.max()
+```
+
+# d
+
+```{r}
+fwd_subset <- regsubsets(Y ~poly(X, 10), data = df, method = "forward") %>% summary()
+```
+
+```{r}
+#Cp
+fwd_subset$cp %>% which.min()
+
+#BIC
+fwd_subset$bic %>% which.min()
+
+#Adjusted R2
+fwd_subset$adjr2 %>% which.max()
+```
+
+```{r}
+bwd_subset <- regsubsets(Y ~poly(X, 10), data = df, method = "backward") %>% summary()
+```
+
+```{r}
+#Cp
+bwd_subset$cp %>% which.min()
+
+#BIC
+bwd_subset$bic %>% which.min()
+
+#Adjusted R2
+bwd_subset$adjr2 %>% which.max()
+```
+
+# e
+
+```{r}
+df <- tibble("x" = X, "x_2" = X^2, "x_3" = X^3, "x_4" = X^4, "x_5" = X^5, "x_6" = X^6, "x_7" = X^7,
+             "x_8" = X^8, "x_9" = X^9, "x_10" = X^10, "y" = Y)
+```
+
+
+```{r}
+lasso_model <- cv.glmnet(df %>% select(-y) %>% as.matrix(), df$y, alpha = 1)
+plot(lasso_model)
+bestlam <- lasso_model$lambda.min
+
+lasso_model_best <- glmnet(df %>% select(-y) %>% as.matrix(), df$y, alpha = 1, lambda = bestlam)
+
+predict(lasso_model_best, s = bestlam, type = "coefficients")[1:11,]
+```
+
+
+```{r}
+df[,1:10]
+```
+
+```{r}
+library(tidymodels)
+
+lasso_model_best %>% tidy()
+```
+
+# f
+
+```{r}
+Y_2 <- beta_0 + 8 * X^7 + epsilon
+```
+
+```{r}
+df <- tibble("x" = X, "y" = Y_2)
+
+best_subset <- regsubsets(y ~poly(x, 10), data =df, nvmax = 10)
+
+```
+
+```{r}
+best_subset %>% summary()
+```
+
+```{r}
+df <- tibble("x" = X, "x_2" = X^2, "x_3" = X^3, "x_4" = X^4, "x_5" = X^5, "x_6" = X^6, "x_7" = X^7,
+             "x_8" = X^8, "x_9" = X^9, "x_10" = X^10, "y" = Y_2)
+
+best_lasso <- cv.glmnet(df %>% select(-y) %>% as.matrix(), df$y, alpha = 1)
+bestlam <- best_lasso$lambda.min
+best_lasso <- glmnet(df %>% select(-y) %>% as.matrix(), df$y, lambda = bestlam, alpha = 1)
+best_lasso %>% tidy()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

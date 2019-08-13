@@ -1,0 +1,104 @@
+---
+title: '6.9'
+author: "Igor Adamiec"
+date: "13 08 2019"
+output: html_document
+---
+
+```{r}
+data("College")
+```
+
+```{r}
+College <- College %>% 
+  mutate(Private = as.numeric(as.character(factor(Private, labels = c(0,1)))))
+```
+
+# a
+
+```{r}
+set.seed(1)
+split <- initial_split(College, prop = .8)
+
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+# b
+
+```{r}
+lm <- lm(Apps~., data = train_set)
+mean((test_set$Apps - predict(lm, newdata = test_set))^2)
+```
+
+# c
+
+```{r}
+ridge_cv <- cv.glmnet(train_set %>% select(-Apps) %>% as.matrix(), train_set$Apps, alpha = 0)
+
+bestlam <- ridge_cv$lambda.min
+
+ridge <- glmnet(alpha = 0,
+                train_set %>% select(-Apps) %>% as.matrix(),
+                train_set$Apps,
+                lambda = bestlam)
+mean((test_set$Apps - predict(ridge, newx = test_set %>% select(-Apps) %>% as.matrix()))^2)
+```
+
+```{r}
+ridge %>% tidy()
+```
+
+# d
+
+```{r}
+lasso_cv <- cv.glmnet(train_set %>% select(-Apps) %>% as.matrix(), train_set$Apps, alpha = 1)
+
+bestlam <- lasso_cv$lambda.min
+
+lasso <- glmnet(alpha = 1,
+                train_set %>% select(-Apps) %>% as.matrix(),
+                train_set$Apps,
+                lambda = bestlam)
+mean((test_set$Apps - predict(lasso, newx = test_set %>% select(-Apps) %>% as.matrix()))^2)
+```
+
+```{r}
+lasso %>% tidy()
+```
+
+# e
+
+```{r}
+set.seed(1)
+pcr.fit <- pcr(Apps~., data = train_set, scale = T,
+                  validation = "CV")
+validationplot(pcr.fit, val.type = "MSEP")
+
+summary(pcr.fit)
+```
+
+```{r}
+pcr_pred <- predict(pcr.fit, test_set %>% select(-Apps), ncomp = 16)
+mean((test_set$Apps -pcr_pred))^2
+```
+
+# f
+
+```{r}
+set.seed(1)
+pls.fit <- plsr(Apps~., data =train_set,
+                scale = T, validation = "CV")
+summary(pls.fit)
+```
+
+```{r}
+pls.fit <- plsr(Apps~., data =train_set, scale = T, ncomp = 10)
+summary(pls.fit)
+```
+
+```{r}
+pls_pred <- predict(pls.fit, test_set %>% select(-Apps), ncomp = 10)
+mean((test_set$Apps -pls_pred))^2
+```
+
