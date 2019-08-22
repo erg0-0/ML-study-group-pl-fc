@@ -1266,31 +1266,10 @@ set.seed(1)
 ```{r}
 final_comp %>% 
   left_join(final_df_3, by = "model") %>% 
-  rename("mse_third" = "mse")
+  rename("mse_third" = "mse") # %>% 
+  #mutate_at(vars(starts_with("mse")), sqrt)
 ```
 
+# szukanie nieliniowosci
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+probowalem szukac nieliniowosci ale backward i forward dawaly strasznie beznadziejne wyniki
