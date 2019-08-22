@@ -5,6 +5,8 @@ date: "8/15/2019"
 output: html_document
 ---
 
+# Libraries
+
 ```{r}
 library(MASS)
 library(tidyverse)
@@ -14,11 +16,17 @@ library(leaps)
 library(pls)
 library(glmnet)
 library(rlang)
+library(car)
+library(patchwork)
 ```
+
+# Loading data
+
 ```{r}
 data("Boston")
 Boston %>% summary()
 ```
+
 
 ```{r}
 # Boston <- Boston %>% 
@@ -26,13 +34,17 @@ Boston %>% summary()
 # Boston %>% summary()
 ```
 
-
+# Train - test split
 
 ```{r}
+set.seed(1)
 split <- initial_split(Boston, prop = .8)
 train_set <- training(split)
 test_set <- testing(split)
+
 ```
+
+# Predict.regsubsets function
 
 ```{r}
 predict.regsubsets <- function(object, newdata, id, ...) {
@@ -45,7 +57,7 @@ predict.regsubsets <- function(object, newdata, id, ...) {
   
 ```
 
-
+# Cross validation data
 
 ```{r}
 set.seed(1)
@@ -53,9 +65,11 @@ df_cv <-  vfold_cv(train_set, v = 10) %>%
   mutate(train = map(splits, ~training(.x)),
          validate = map(splits, ~testing(.x)),
          truths = map(validate, "crim"))
+
+df_cv
 ```
 
-
+# Parameters to cv data
 
 ```{r}
 params <- 1:13
@@ -64,99 +78,192 @@ names <- paste0(rep("variables", each = length(params)), "_", 1:13)
 model_fun <- glue::glue('map2(model, validate, ~predict(.x, .y, id = {1:13}))') %>% paste(., collapse = ";")
 
 names_mse <- paste0(rep("mse", each = length(params)), "_", 1:13)
-mse_fun <- glue::glue('map2_dbl(truths, variables_{1:13}, ~mean((.x - .y)^2))')
+mse_fun <- glue::glue('map2_dbl(truths, variables_{1:13}, ~mean((.x - .y)^2))') %>% paste(., collapse = ";")
 ```
 
-# Best subset
+# Best subset cv
 
 ```{r}
-df_cv %>% 
+best_subset_cv <- df_cv %>% 
   mutate(model = map(train, ~regsubsets(crim~., data = .x, nvmax = 13))) %>% 
   mutate(!!! parse_exprs(model_fun)) %>% 
   rename_at(vars(starts_with("map2")), ~names) %>% 
   mutate(!!! parse_exprs(mse_fun)) %>% 
   rename_at(vars(starts_with("map2")), ~names_mse) %>% 
   summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
-  gather(key = "no_variables", value = "mse") %>% 
+  gather(key = "n_variables", value = "mse")
+
+best_subset_cv %>% 
+  arrange(mse)
+
+(best_subset_cv %>% 
   ggplot(aes(x = 1:13, y = mse)) +
   geom_line() + geom_point(color = "blue") +
-  labs(x = "number of variables", title = "Best subset selection", subtitle = "for Boston dataset") -> best_plot
+  labs(x = "number of variables", title = "Best subset selection", subtitle = "for Boston dataset") -> best_plot)
 ```
 
 ```{r}
-regsubsets(crim~., data = train_set) %>% coef(1)
+regsubsets(crim~., data = train_set) %>% coef(2)
+regsubsets(crim~., data = train_set) %>% coef(6)
 ```
 
-# Backwards selection
+# Backwards selection cv
 
 
 ```{r}
-df_cv %>% 
+bwd_subset_cv <- df_cv %>% 
   mutate(model = map(train, ~regsubsets(crim~., data = .x, nvmax = 13, method = "backward"))) %>% 
   mutate(!!! parse_exprs(model_fun)) %>% 
   rename_at(vars(starts_with("map2")), ~names) %>% 
   mutate(!!! parse_exprs(mse_fun)) %>% 
   rename_at(vars(starts_with("map2")), ~names_mse) %>% 
   summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
-  gather(key = "no_variables", value = "mse") %>% 
+  gather(key = "n_variables", value = "mse") 
+
+bwd_subset_cv %>% 
+  arrange(mse)
+
+(bwd_subset_cv %>% 
   ggplot(aes(x = 1:13, y = mse)) +
   geom_line() + geom_point(color = "blue") +
-  labs(x = "number of variables", title = "Backward selection", subtitle = "for Boston dataset") -> bwd_plot
+  labs(x = "number of variables", title = "Backward selection", subtitle = "for Boston dataset") -> bwd_plot)
 ```
 
 ```{r}
-regsubsets(crim~., data = train_set, method = "backward") %>% coef(1)
+regsubsets(crim~., data = train_set, method = "backward") %>% coef(5)
+regsubsets(crim~., data = train_set, method = "backward") %>% coef(8)
 ```
 
+# Forwards selection cv
+
 ```{r}
-df_cv %>% 
+fwd_subset_cv <- df_cv %>% 
   mutate(model = map(train, ~regsubsets(crim~., data = .x, nvmax = 13, method = "forward"))) %>% 
   mutate(!!! parse_exprs(model_fun)) %>% 
   rename_at(vars(starts_with("map2")), ~names) %>% 
   mutate(!!! parse_exprs(mse_fun)) %>% 
   rename_at(vars(starts_with("map2")), ~names_mse) %>% 
   summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
-  gather(key = "no_variables", value = "mse") %>% 
+  gather(key = "n_variables", value = "mse") 
+
+fwd_subset_cv %>% 
+  arrange(mse)
+
+(fwd_subset_cv %>% 
   ggplot(aes(x = 1:13, y = mse)) +
   geom_line() + geom_point(color = "blue") +
-  labs(x = "number of variables", title = "Forward selection", subtitle = "for Boston dataset") -> fwd_plot
+  labs(x = "number of variables", title = "Forward selection", subtitle = "for Boston dataset") -> fwd_plot)
 ```
 
 ```{r}
-library(gridExtra)
+regsubsets(crim~., data = train_set, method = "forward", nvmax = 13) %>% coef(2)
+regsubsets(crim~., data = train_set, method = "forward", nvmax = 13) %>% coef(13)
+```
+
+# Subset cv comparison
+
+```{r}
+best_plot + bwd_plot +fwd_plot
 ```
 
 ```{r}
-grid.arrange(best_plot, bwd_plot, fwd_plot, ncol = 3)
+best_subset_cv %>% 
+  left_join(bwd_subset_cv, by = "n_variables", suffix = c("_best", "_bwd")) %>% 
+  left_join(fwd_subset_cv, by = "n_variables") %>% 
+  rename("mse_fwd" = mse)
 ```
 
-# Ridge regression
+
+# Ridge regression cv
 
 ```{r}
+set.seed(1)
 cv_ridge <- cv.glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 0)
 plot(cv_ridge)
-bestlam_r <- cv_ridge$lambda.min
+(bestlam_r <- cv_ridge$lambda.min)
+tibble(lambda = cv_ridge$lambda, mse = cv_ridge$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
 ```
+
+```{r}
+small_grid <- seq(0, 1, length.out = 153)
+set.seed(1)
+cv_ridge <- cv.glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 0, lambda = small_grid)
+plot(cv_ridge)
+(bestlam_r <- cv_ridge$lambda.min)
+tibble(lambda = cv_ridge$lambda, mse = cv_ridge$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+cv_ridge$lambda.1se
+```
+
 
 ```{r}
 ridge <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 0, lambda = bestlam_r)
 coef(ridge)[,1]
 ```
 
-# Lasso
+```{r}
+ridge <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 0, lambda = 1)
+coef(ridge)[,1]
+```
+
+# Lasso regression cv
 
 ```{r}
+set.seed(1)
 cv_lasso <- cv.glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1)
 plot(cv_lasso)
-bestlam_l <- cv_lasso$lambda.min
+(bestlam_l <- cv_lasso$lambda.min)
+
+tibble(lambda = cv_lasso$lambda, mse = cv_lasso$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
 ```
+
+```{r}
+small_grid <- seq(0, 1, length.out = 153)
+set.seed(1)
+cv_lasso <- cv.glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = small_grid)
+plot(cv_lasso)
+(bestlam_l <- cv_lasso$lambda.min)
+
+tibble(lambda = cv_lasso$lambda, mse = cv_lasso$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+cv_lasso$lambda.1se
+```
+
 
 ```{r}
 lasso <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = bestlam_l)
 coef(lasso)[,1][coef(lasso)[,1] != 0]
 ```
 
-# PCR
+```{r}
+coef(lasso)[,1][coef(lasso)[,1] == 0]
+```
+
+```{r}
+lasso <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = 1)
+coef(lasso)[,1][coef(lasso)[,1] != 0]
+```
+
+```{r}
+coef(lasso)[,1][coef(lasso)[,1] == 0]
+```
+
+# PCR cv
 
 ```{r}
 set.seed(1)
@@ -165,17 +272,16 @@ pcr_cv <- pcr(crim ~., data = train_set, scale = T, validation = "CV")
 
 ```{r}
 pcr_cv %>% summary()
+
 ```
 
 ```{r}
 validationplot(pcr_cv, val.type = "MSEP")
 ```
 
-```{r}
-pcr <- pcr(crim~., data = train_set, scale = T, ncomp = 13)
-```
 
-# PLS
+
+# PLS cv
 
 ```{r}
 set.seed(1)
@@ -191,33 +297,979 @@ validationplot(pls_cv)
 ```
 
 ```{r}
-pls <- plsr(crim~., data = train_set, scale = T)
+pls <- plsr(crim~., data = train_set, scale = T, ncomp =10)
+pls %>% summary()
 ```
 
 # Test MSE
 
 ```{r}
+set.seed(1)
 (final_df <- tibble(train = list(train_set), test = list(test_set)) %>% 
   mutate(truths = map(test, "crim"),
+         # model lm with all vars
          model_lm = map(train, ~lm(crim~., data =.x)),
          predict_lm = map2(model_lm, test, ~predict(.x, newdata = .y)),
          mse_lm = map2_dbl(truths, predict_lm, ~mean((.x-.y)^2)),
+         # model best subset selection with 2 vars
          model_best_subset = map(train, ~regsubsets(crim~., data = .x, nvmax = 13)),
-         predict_best_subset = map2(model_best_subset, test, ~predict(.x, .y, id = 8)),
+         predict_best_subset = map2(model_best_subset, test, ~predict(.x, .y, id = 2)),
          mse_best_subset = map2_dbl(truths, predict_best_subset, ~mean((.x-.y)^2)),
-         model_ridge = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), .x$crim, alpha = 0, lambda = bestlam_r)),
-         predict_ridge = map2(model_ridge, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_r)),
-         mse_ridge = map2_dbl(truths, predict_ridge, ~mean((.x-.y)^2)),
-         model_lasso = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), .x$crim, alpha = 1, lambda = bestlam_l)),
-         predict_lasso = map2(model_lasso, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_l)),
-         mse_lasso = map2_dbl(truths, predict_lasso, ~mean((.x-.y)^2)),
-         model_pcr = map(train, ~pcr(crim~., data = .x, scale = T, ncomp = )) %>% 
-   select(starts_with("mse")))
+         # model backwards subset selection with 5 vars
+         model_bwd_subset = map(train, ~regsubsets(crim~., data = .x, nvmax = 13, method = "backward")),
+         predict_bwd_subset = map2(model_bwd_subset, test, ~predict(.x, .y, id = 5)),
+         mse_bwd_subset = map2_dbl(truths, predict_bwd_subset, ~mean((.x-.y)^2)),
+         # model forwards subset selection with 2 vars
+         model_fwd_subset = map(train, ~regsubsets(crim~., data = .x, nvmax = 13, method = "forward")),
+         predict_fwd_subset = map2(model_fwd_subset, test, ~predict(.x, .y, id = 2)),
+         mse_fwd_subset = map2_dbl(truths, predict_fwd_subset, ~mean((.x-.y)^2)),
+         # model ridge regression with best lambda
+         model_ridge_bl = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), .x$crim, alpha = 0, lambda = bestlam_r)),
+         predict_ridge_bl = map2(model_ridge_bl, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_r)),
+         mse_ridge_bl = map2_dbl(truths, predict_ridge_bl, ~mean((.x-.y)^2)),
+         # model ridge regression with lambda = 1
+         model_ridge_l1 = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), .x$crim, alpha = 0, lambda = 1)),
+         predict_ridge_l1 = map2(model_ridge_l1, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = 1)),
+         mse_ridge_l1 = map2_dbl(truths, predict_ridge_l1, ~mean((.x-.y)^2)),
+         # model lasso regression with best lambda
+         model_lasso_bl = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), .x$crim, alpha = 1, lambda = bestlam_l)),
+         predict_lasso_bl = map2(model_lasso_bl, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_l)),
+         mse_lasso_bl = map2_dbl(truths, predict_lasso_bl, ~mean((.x-.y)^2)),
+         # model lasso regression with lambda = 1
+         model_lasso_l1 = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), .x$crim, alpha = 1, lambda = 1)),
+         predict_lasso_l1 = map2(model_lasso_l1, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = 1)),
+         mse_lasso_l1 = map2_dbl(truths, predict_lasso_l1, ~mean((.x-.y)^2)),
+         # model pcr with 13 components
+         model_pcr = map(train, ~pcr(crim~., data = .x, scale = T, ncomp = 13)),
+         predict_pcr = map2(model_pcr, test, ~predict(.x, newdata = .y, ncomp = 13)),
+         mse_pcr = map2_dbl(truths, predict_pcr, ~mean((.x - .y)^2)),
+         # model pls with 10 components
+         model_pls = map(train, ~plsr(crim~., data = .x, scale = T, ncomp = 13)),
+         predict_pls = map2(model_pls, test, ~predict(.x, newdata = .y, ncomp = 10)),
+         mse_pls = map2_dbl(truths, predict_pls, ~mean((.x - .y)^2))) %>% 
+   select(starts_with("mse")) %>% 
+  gather(key = model, value = mse) %>% 
+  mutate(model = str_remove(model, "mse_")) %>% 
+  arrange(mse))
+```
+
+# Editing dataset
+
+```{r}
+train_set <- train_set %>% rownames_to_column()
+#test_set <- test_set %>% rownames_to_column()
+model_lm <- lm(log(crim)~.-rowname, data = train_set)
+```
+
+## Non-linearity of the data and non-constant variance of error terms
+
+Dane byly nieliniowe i wariancja bledu byla niestala, ale wydaje sie, ze funkcja log pomogla
+
+```{r}
+model_lm %>%
+  augment() %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
+
+## Leverage
+
+jedna obserwacja (numer 369) jest do wyrzucenia
+
+```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  ggplot(aes(x = leverage, y = stud_resid))+
+  geom_point()
 ```
 
 ```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  filter(leverage > .15)
+```
+
+```{r}
+train_set %>% filter(rowname == 369)
+```
+
+## Outliers
+
+Jezeli przyjmujemy (jak w ksiazce), ze wartosci stud residuals powinny byc pomiedzy -3 i 3, to nie ma outlierow
+
+```{r}
+model_lm %>% 
+  augment() %>% mutate(stud_resid = rstudent(model_lm)) %>% 
+  ggplot(aes(x = .fitted, y = stud_resid)) +
+  geom_point()
+```
+
+## Collinearity
+
+Wydaje sie, ze zarowno zmienna tax mozna wyrzucic
+
+```{r}
+vif(model_lm)
+```
+
+Po wyrzuceniu zmiennej tax, zmienna wartosc vif dla zmiennej rad zmniejszyla sie znacznie.
+
+```{r}
+lm(log(crim)~.-rowname-tax, data = train_set) %>% vif()
+```
+
+
+# Od nowa
+
+## Creating new dataset
+
+```{r}
+Boston_2 <- Boston %>% 
+  rownames_to_column() %>% 
+  #mutate(crim = log(crim)) %>% 
+  filter(rowname !=369) %>% 
+  select(-tax)
+```
+
+## Split
+
+```{r}
+set.seed(1)
+split <- initial_split(Boston_2, prop = .8)
+train_set <- training(split)
+test_set <- testing(split)
 
 ```
+
+## CV data
+
+```{r}
+set.seed(1)
+df_cv <-  vfold_cv(train_set, v = 10) %>% 
+  mutate(train = map(splits, ~training(.x)),
+         validate = map(splits, ~testing(.x)),
+         truths = map(validate, "crim"))
+
+df_cv
+```
+
+## Parameters to cv data
+
+```{r}
+params <- 1:12
+
+names <- paste0(rep("variables", each = length(params)), "_", 1:12)
+model_fun <- glue::glue('map2(model, validate, ~(predict(.x, .y, id = {1:12})))') %>% paste(., collapse = ";")
+
+names_mse <- paste0(rep("mse", each = length(params)), "_", 1:12)
+mse_fun <- glue::glue('map2_dbl(truths, variables_{1:12}, ~mean((.x - exp(.y))^2))') %>% paste(., collapse = ";")
+```
+
+## Best subset cv
+
+```{r}
+best_subset_cv <- df_cv %>% 
+  mutate(model = map(train, ~regsubsets(log(crim)~.-rowname, data = .x, nvmax = 12))) %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names) %>% 
+  mutate(!!! parse_exprs(mse_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names_mse) %>% 
+  summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
+  gather(key = "n_variables", value = "mse")
+
+best_subset_cv %>% 
+  arrange(mse)
+
+(best_subset_cv %>% 
+  ggplot(aes(x = 1:12, y = mse)) +
+  geom_line() + geom_point(color = "blue") +
+  labs(x = "number of variables", title = "Best subset selection", subtitle = "for Boston dataset") -> best_plot)
+```
+
+## Backwards selection cv
+
+```{r}
+bwd_subset_cv <- df_cv %>% 
+  mutate(model = map(train, ~regsubsets(log(crim)~.-rowname, data = .x, nvmax = 12, method = "backward"))) %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names) %>% 
+  mutate(!!! parse_exprs(mse_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names_mse) %>% 
+  summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
+  gather(key = "n_variables", value = "mse") 
+
+bwd_subset_cv %>% 
+  arrange(mse)
+
+(bwd_subset_cv %>% 
+  ggplot(aes(x = 1:12, y = mse)) +
+  geom_line() + geom_point(color = "blue") +
+  labs(x = "number of variables", title = "Backward selection", subtitle = "for Boston dataset") -> bwd_plot)
+```
+
+## Forwards selection cv
+
+```{r}
+fwd_subset_cv <- df_cv %>% 
+  mutate(model = map(train, ~regsubsets(log(crim)~.-rowname, data = .x, nvmax = 12, method = "forward"))) %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names) %>% 
+  mutate(!!! parse_exprs(mse_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names_mse) %>% 
+  summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
+  gather(key = "n_variables", value = "mse") 
+
+fwd_subset_cv %>% 
+  arrange(mse)
+
+(fwd_subset_cv %>% 
+  ggplot(aes(x = 1:12, y = mse)) +
+  geom_line() + geom_point(color = "blue") +
+  labs(x = "number of variables", title = "Forward selection", subtitle = "for Boston dataset") -> fwd_plot)
+```
+
+## Subset cv comparison
+
+```{r}
+best_plot + bwd_plot +fwd_plot
+```
+
+```{r}
+best_subset_cv %>% 
+  left_join(bwd_subset_cv, by = "n_variables", suffix = c("_best", "_bwd")) %>% 
+  left_join(fwd_subset_cv, by = "n_variables") %>% 
+  rename("mse_fwd" = mse)
+```
+
+## Ridge regression cv
+
+```{r}
+set.seed(1)
+cv_ridge <- cv.glmnet(train_set %>% select(-crim, -rowname) %>% as.matrix(), log(train_set$crim), alpha = 0)
+plot(cv_ridge)
+(bestlam_r <- cv_ridge$lambda.min)
+tibble(lambda = cv_ridge$lambda, mse = cv_ridge$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+small_grid <- seq(0, .25, length.out = 153)
+set.seed(1)
+cv_ridge <- cv.glmnet(train_set %>% select(-crim, - rowname) %>% as.matrix(), log(train_set$crim), alpha = 0, lambda = small_grid)
+plot(cv_ridge)
+(bestlam_r <- cv_ridge$lambda.min)
+tibble(lambda = cv_ridge$lambda, mse = cv_ridge$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+cv_ridge$lambda.1se
+```
+
+## Lasso regression cv
+
+```{r}
+set.seed(1)
+cv_lasso <- cv.glmnet(train_set %>% select(-crim, - rowname) %>% as.matrix(), log(train_set$crim), alpha = 1)
+plot(cv_lasso)
+(bestlam_l <- cv_lasso$lambda.min)
+
+tibble(lambda = cv_lasso$lambda, mse = cv_lasso$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+```
+
+```{r}
+small_grid <- seq(0, .25, length.out = 153)
+set.seed(1)
+cv_lasso <- cv.glmnet(train_set %>% select(-crim,-rowname) %>% as.matrix(), log(train_set$crim), alpha = 1, lambda = small_grid)
+plot(cv_lasso)
+(bestlam_l <- cv_lasso$lambda.min)
+
+tibble(lambda = cv_lasso$lambda, mse = cv_lasso$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+cv_lasso$lambda.1se
+```
+
+```{r}
+lasso <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = bestlam_l)
+coef(lasso)[,1][coef(lasso)[,1] != 0]
+```
+
+```{r}
+coef(lasso)[,1][coef(lasso)[,1] == 0]
+```
+
+```{r}
+lasso <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = cv_lasso$lambda.1se)
+coef(lasso)[,1][coef(lasso)[,1] != 0]
+```
+
+```{r}
+coef(lasso)[,1][coef(lasso)[,1] == 0]
+```
+
+## PCR cv
+
+```{r}
+set.seed(1)
+pcr_cv <- pcr(log(crim) ~., data = train_set %>% select(-rowname), scale = T, validation = "CV")
+```
+
+```{r}
+pcr_cv %>% summary()
+
+```
+
+```{r}
+validationplot(pcr_cv, val.type = "MSEP")
+```
+
+## PLS cv
+
+```{r}
+set.seed(1)
+pls_cv <- plsr(log(crim)~.,data = train_set %>% select(-rowname), scale = T, validation = "CV")
+```
+
+```{r}
+pls_cv %>% summary()
+```
+
+```{r}
+validationplot(pls_cv)
+```
+
+## Test MSE
+
+```{r}
+set.seed(1)
+(final_df_2 <- tibble(train = list(train_set %>% select(-rowname)), test = list(test_set %>% select(-rowname))) %>% 
+  mutate(truths = map(test, "crim"),
+         # model lm with all vars
+         model_lm = map(train, ~lm(log(crim)~., data =.x)),
+         predict_lm = map2(model_lm, test, ~predict(.x, newdata = .y)),
+         mse_lm = map2_dbl(truths, predict_lm, ~mean((.x-exp(.y))^2)),
+         # model best subset selection with 2 vars
+         model_best_subset = map(train, ~regsubsets(log(crim)~., data = .x, nvmax = 12)),
+         predict_best_subset = map2(model_best_subset, test, ~predict(.x, .y, id = 4)),
+         mse_best_subset = map2_dbl(truths, predict_best_subset, ~mean((.x-exp(.y))^2)),
+         # model backwards subset selection with 5 vars
+         model_bwd_subset = map(train, ~regsubsets(log(crim)~., data = .x, nvmax = 12, method = "backward")),
+         predict_bwd_subset = map2(model_bwd_subset, test, ~predict(.x, .y, id = 4)),
+         mse_bwd_subset = map2_dbl(truths, predict_bwd_subset, ~mean((.x-exp(.y))^2)),
+         # model forwards subset selection with 2 vars
+         model_fwd_subset = map(train, ~regsubsets(log(crim)~., data = .x, nvmax = 12, method = "forward")),
+         predict_fwd_subset = map2(model_fwd_subset, test, ~predict(.x, .y, id = 4)),
+         mse_fwd_subset = map2_dbl(truths, predict_fwd_subset, ~mean((.x-exp(.y))^2)),
+         # model ridge regression with best lambda
+         model_ridge_bl = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 0, lambda = bestlam_r)),
+         predict_ridge_bl = map2(model_ridge_bl, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_r)),
+         mse_ridge_bl = map2_dbl(truths, predict_ridge_bl, ~mean((.x-exp(.y))^2)),
+         # model ridge regression with lambda = 1
+         model_ridge_l1 = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 0, lambda = cv_ridge$lambda.1se)),
+         predict_ridge_l1 = map2(model_ridge_l1, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = cv_ridge$lambda.1se)),
+         mse_ridge_l1 = map2_dbl(truths, predict_ridge_l1, ~mean((.x-exp(.y))^2)),
+         # model lasso regression with best lambda
+         model_lasso_bl = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 1, lambda = bestlam_l)),
+         predict_lasso_bl = map2(model_lasso_bl, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_l)),
+         mse_lasso_bl = map2_dbl(truths, predict_lasso_bl, ~mean((.x-exp(.y))^2)),
+         # model lasso regression with lambda = 1
+         model_lasso_l1 = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 1, lambda = cv_lasso$lambda.1se)),
+         predict_lasso_l1 = map2(model_lasso_l1, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = cv_lasso$lambda.1se)),
+         mse_lasso_l1 = map2_dbl(truths, predict_lasso_l1, ~mean((.x-exp(.y))^2)),
+         # model pcr with 13 components
+         model_pcr = map(train, ~pcr(log(crim)~., data = .x, scale = T, ncomp = 12)),
+         predict_pcr = map2(model_pcr, test, ~predict(.x, newdata = .y, ncomp = 8)),
+         mse_pcr = map2_dbl(truths, predict_pcr, ~mean((.x - exp(.y))^2)),
+         # model pls with 10 components
+         model_pls = map(train, ~plsr(log(crim)~., data = .x, scale = T, ncomp = 12)),
+         predict_pls = map2(model_pls, test, ~predict(.x, newdata = .y, ncomp = 5)),
+         mse_pls = map2_dbl(truths, predict_pls, ~mean((.x - exp(.y))^2))) %>% 
+   select(starts_with("mse")) %>% 
+  gather(key = model, value = mse) %>% 
+  mutate(model = str_remove(model, "mse_")) %>% 
+  arrange(mse))
+```
+
+```{r}
+(final_df %>% 
+  left_join(final_df_2, by = "model", suffix = c("_original", "_second")) -> final_comp)
+```
+
+## Editing dataset
+
+```{r}
+model_lm <- lm(log(crim)~.-rowname, data = train_set)
+```
+
+### Non-linearity of the data and non-constant variance of error terms
+
+Dane byly nieliniowe i wariancja bledu byla niestala, ale wydaje sie, ze funkcja log pomogla
+
+```{r}
+model_lm %>%
+  augment() %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
+
+### Leverage
+
+jedna obserwacja (numer 369) jest do wyrzucenia
+
+```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  ggplot(aes(x = leverage, y = stud_resid))+
+  geom_point()
+```
+
+```{r}
+(tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  filter(leverage > .12) %>%
+  pull(observation) -> to_remove)
+```
+
+
+
+```{r}
+train_set %>% filter(rowname %in% to_remove )
+```
+
+### Outliers
+
+Jezeli przyjmujemy (jak w ksiazce), ze wartosci stud residuals powinny byc pomiedzy -3 i 3, to mamy 3 outlierow
+
+```{r}
+model_lm %>% 
+  augment() %>% mutate(stud_resid = rstudent(model_lm)) %>% 
+  ggplot(aes(x = .fitted, y = stud_resid)) +
+  geom_point()
+```
+
+```{r}
+model_lm %>% 
+  augment() %>% 
+  mutate(stud_resid = rstudent(model_lm)) %>% 
+  filter(stud_resid >= 3 | stud_resid <= -3) %>% pull(rowname) -> tbr
+
+to_remove <-  c(to_remove, tbr)
+```
+
+
+
+### Collinearity
+
+Wydaje sie, ze zmienna tax mozna wyrzucic
+
+```{r}
+vif(model_lm)
+```
+
+# Po raz trzeci
+
+## zaczalem od edycji danych
+
+```{r}
+Boston_3 <- Boston_2 %>% 
+  filter(!rowname %in% to_remove)
+```
+
+```{r}
+set.seed(1)
+split <- initial_split(Boston_3, prop = .8)
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+```{r}
+model_lm <- lm(log(crim)~.-rowname, data = train_set)
+```
+
+```{r}
+model_lm %>%
+  augment() %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
+
+```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  ggplot(aes(x = leverage, y = stud_resid))+
+  geom_point()
+```
+
+```{r}
+(tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  filter(leverage > .125) %>%
+  pull(observation) -> to_remove)
+```
+
+```{r}
+train_set %>% filter(rowname %in% to_remove )
+```
+
+```{r}
+model_lm %>% 
+  augment() %>% mutate(stud_resid = rstudent(model_lm)) %>% 
+  ggplot(aes(x = .fitted, y = stud_resid)) +
+  geom_point()
+```
+
+```{r}
+vif(model_lm)
+```
+
+## kolejna edycja, bo leverage bylo za duze dla trzech
+
+```{r}
+Boston_4 <- Boston_3 %>% 
+  filter(!rowname %in% to_remove)
+```
+
+```{r}
+set.seed(1)
+split <- initial_split(Boston_4, prop = .8)
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+```{r}
+model_lm <- lm(log(crim)~.-rowname, data = train_set)
+```
+
+```{r}
+model_lm %>%
+  augment() %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
+
+```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  ggplot(aes(x = leverage, y = stud_resid))+
+  geom_point()
+```
+
+```{r}
+(tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  filter(leverage > .1) %>%
+  pull(observation) -> to_remove)
+```
+
+```{r}
+model_lm %>% 
+  augment() %>% mutate(stud_resid = rstudent(model_lm)) %>% 
+  ggplot(aes(x = .fitted, y = stud_resid)) +
+  geom_point()
+```
+
+## kolejna edycja, bo leverage znow za duze dla trzech
+
+```{r}
+Boston_5 <- Boston_4 %>% 
+  filter(!rowname %in% to_remove)
+```
+
+```{r}
+set.seed(1)
+split <- initial_split(Boston_5, prop = .8)
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+```{r}
+model_lm <- lm(log(crim)~.-rowname, data = train_set)
+```
+
+```{r}
+model_lm %>%
+  augment() %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
+
+```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  ggplot(aes(x = leverage, y = stud_resid))+
+  geom_point()
+```
+
+```{r}
+(tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  filter(leverage > .1) %>%
+  pull(observation) -> to_remove)
+```
+
+```{r}
+model_lm %>% 
+  augment() %>% mutate(stud_resid = rstudent(model_lm)) %>% 
+  ggplot(aes(x = .fitted, y = stud_resid)) +
+  geom_point()
+```
+
+## kolejna edycja
+
+```{r}
+Boston_6 <- Boston_5 %>% 
+  filter(!rowname %in% to_remove)
+```
+
+```{r}
+set.seed(1)
+split <- initial_split(Boston_6, prop = .8)
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+```{r}
+model_lm <- lm(log(crim)~.-rowname, data = train_set)
+```
+
+```{r}
+model_lm %>%
+  augment() %>% 
+  ggplot(aes(x = .fitted, y = .resid)) +
+  geom_point() +
+  geom_smooth(se = F)
+```
+
+```{r}
+tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  ggplot(aes(x = leverage, y = stud_resid))+
+  geom_point()
+```
+
+```{r}
+(tibble( leverage = model_lm %>% 
+  hatvalues(),
+      stud_resid = model_lm %>% rstudent(),
+  observation = model_lm %>% augment() %>% pull(rowname)) %>% 
+  filter(leverage > .1) %>%
+  pull(observation) -> to_remove)
+```
+
+```{r}
+model_lm %>% 
+  augment() %>% mutate(stud_resid = rstudent(model_lm)) %>% 
+  ggplot(aes(x = .fitted, y = stud_resid)) +
+  geom_point()
+```
+
+# Wydaje sie, ze jest juz ok
+
+## CV data
+
+```{r}
+set.seed(1)
+df_cv <-  vfold_cv(train_set, v = 10) %>% 
+  mutate(train = map(splits, ~training(.x)),
+         validate = map(splits, ~testing(.x)),
+         truths = map(validate, "crim"))
+
+df_cv
+```
+
+## Parameters to cv data
+
+```{r}
+params <- 1:12
+
+names <- paste0(rep("variables", each = length(params)), "_", 1:12)
+model_fun <- glue::glue('map2(model, validate, ~(predict(.x, .y, id = {1:12})))') %>% paste(., collapse = ";")
+
+names_mse <- paste0(rep("mse", each = length(params)), "_", 1:12)
+mse_fun <- glue::glue('map2_dbl(truths, variables_{1:12}, ~mean((.x - exp(.y))^2))') %>% paste(., collapse = ";")
+```
+
+## Best subset cv
+
+```{r}
+best_subset_cv <- df_cv %>% 
+  mutate(model = map(train, ~regsubsets(log(crim)~.-rowname, data = .x, nvmax = 12))) %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names) %>% 
+  mutate(!!! parse_exprs(mse_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names_mse) %>% 
+  summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
+  gather(key = "n_variables", value = "mse")
+
+best_subset_cv %>% 
+  arrange(mse)
+
+(best_subset_cv %>% 
+  ggplot(aes(x = 1:12, y = mse)) +
+  geom_line() + geom_point(color = "blue") +
+  labs(x = "number of variables", title = "Best subset selection", subtitle = "for Boston dataset") -> best_plot)
+```
+
+## Backwards selection cv
+
+```{r}
+bwd_subset_cv <- df_cv %>% 
+  mutate(model = map(train, ~regsubsets(log(crim)~.-rowname, data = .x, nvmax = 12, method = "backward"))) %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names) %>% 
+  mutate(!!! parse_exprs(mse_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names_mse) %>% 
+  summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
+  gather(key = "n_variables", value = "mse") 
+
+bwd_subset_cv %>% 
+  arrange(mse)
+
+(bwd_subset_cv %>% 
+  ggplot(aes(x = 1:12, y = mse)) +
+  geom_line() + geom_point(color = "blue") +
+  labs(x = "number of variables", title = "Backward selection", subtitle = "for Boston dataset") -> bwd_plot)
+```
+
+## Forwards selection cv
+
+```{r}
+fwd_subset_cv <- df_cv %>% 
+  mutate(model = map(train, ~regsubsets(log(crim)~.-rowname, data = .x, nvmax = 12, method = "forward"))) %>% 
+  mutate(!!! parse_exprs(model_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names) %>% 
+  mutate(!!! parse_exprs(mse_fun)) %>% 
+  rename_at(vars(starts_with("map2")), ~names_mse) %>% 
+  summarize_at(vars(starts_with("mse")), ~mean(.)) %>% 
+  gather(key = "n_variables", value = "mse") 
+
+fwd_subset_cv %>% 
+  arrange(mse)
+
+(fwd_subset_cv %>% 
+  ggplot(aes(x = 1:12, y = mse)) +
+  geom_line() + geom_point(color = "blue") +
+  labs(x = "number of variables", title = "Forward selection", subtitle = "for Boston dataset") -> fwd_plot)
+```
+
+## Subset cv comparison
+
+```{r}
+best_plot + bwd_plot +fwd_plot
+```
+
+```{r}
+best_subset_cv %>% 
+  left_join(bwd_subset_cv, by = "n_variables", suffix = c("_best", "_bwd")) %>% 
+  left_join(fwd_subset_cv, by = "n_variables") %>% 
+  rename("mse_fwd" = mse)
+```
+
+## Ridge regression cv
+
+```{r}
+set.seed(1)
+cv_ridge <- cv.glmnet(train_set %>% select(-crim, -rowname) %>% as.matrix(), log(train_set$crim), alpha = 0)
+plot(cv_ridge)
+(bestlam_r <- cv_ridge$lambda.min)
+tibble(lambda = cv_ridge$lambda, mse = cv_ridge$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+small_grid <- seq(0, .25, length.out = 153)
+set.seed(1)
+cv_ridge <- cv.glmnet(train_set %>% select(-crim, - rowname) %>% as.matrix(), log(train_set$crim), alpha = 0, lambda = small_grid)
+plot(cv_ridge)
+(bestlam_r <- cv_ridge$lambda.min)
+tibble(lambda = cv_ridge$lambda, mse = cv_ridge$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+cv_ridge$lambda.1se
+```
+
+## Lasso regression cv
+
+```{r}
+set.seed(1)
+cv_lasso <- cv.glmnet(train_set %>% select(-crim, - rowname) %>% as.matrix(), log(train_set$crim), alpha = 1)
+plot(cv_lasso)
+(bestlam_l <- cv_lasso$lambda.min)
+
+tibble(lambda = cv_lasso$lambda, mse = cv_lasso$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+```
+
+```{r}
+small_grid <- seq(0, .25, length.out = 153)
+set.seed(1)
+cv_lasso <- cv.glmnet(train_set %>% select(-crim,-rowname) %>% as.matrix(), log(train_set$crim), alpha = 1, lambda = small_grid)
+plot(cv_lasso)
+(bestlam_l <- cv_lasso$lambda.min)
+
+tibble(lambda = cv_lasso$lambda, mse = cv_lasso$cvm) %>% 
+  ggplot(aes(x = lambda, y = mse)) +
+  geom_point()
+
+```
+
+```{r}
+cv_lasso$lambda.1se
+```
+
+```{r}
+lasso <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = bestlam_l)
+coef(lasso)[,1][coef(lasso)[,1] != 0]
+```
+
+```{r}
+coef(lasso)[,1][coef(lasso)[,1] == 0]
+```
+
+```{r}
+lasso <- glmnet(train_set %>% select(-crim) %>% as.matrix(), train_set$crim, alpha = 1, lambda = cv_lasso$lambda.1se)
+coef(lasso)[,1][coef(lasso)[,1] != 0]
+```
+
+```{r}
+coef(lasso)[,1][coef(lasso)[,1] == 0]
+```
+
+## PCR cv
+
+```{r}
+set.seed(1)
+pcr_cv <- pcr(log(crim) ~., data = train_set %>% select(-rowname), scale = T, validation = "CV")
+```
+
+```{r}
+pcr_cv %>% summary()
+
+```
+
+```{r}
+validationplot(pcr_cv, val.type = "MSEP")
+```
+
+## PLS cv
+
+```{r}
+set.seed(1)
+pls_cv <- plsr(log(crim)~.,data = train_set %>% select(-rowname), scale = T, validation = "CV")
+```
+
+```{r}
+pls_cv %>% summary()
+```
+
+```{r}
+validationplot(pls_cv)
+```
+
+## Test MSE
+
+```{r}
+set.seed(1)
+(final_df_3 <- tibble(train = list(train_set %>% select(-rowname)), test = list(test_set %>% select(-rowname))) %>% 
+  mutate(truths = map(test, "crim"),
+         # model lm with all vars
+         model_lm = map(train, ~lm(log(crim)~., data =.x)),
+         predict_lm = map2(model_lm, test, ~predict(.x, newdata = .y)),
+         mse_lm = map2_dbl(truths, predict_lm, ~mean((.x-exp(.y))^2)),
+         # model best subset selection with 2 vars
+         model_best_subset = map(train, ~regsubsets(log(crim)~., data = .x, nvmax = 12)),
+         predict_best_subset = map2(model_best_subset, test, ~predict(.x, .y, id = 12)),
+         mse_best_subset = map2_dbl(truths, predict_best_subset, ~mean((.x-exp(.y))^2)),
+         # model backwards subset selection with 5 vars
+         model_bwd_subset = map(train, ~regsubsets(log(crim)~., data = .x, nvmax = 12, method = "backward")),
+         predict_bwd_subset = map2(model_bwd_subset, test, ~predict(.x, .y, id = 12)),
+         mse_bwd_subset = map2_dbl(truths, predict_bwd_subset, ~mean((.x-exp(.y))^2)),
+         # model forwards subset selection with 2 vars
+         model_fwd_subset = map(train, ~regsubsets(log(crim)~., data = .x, nvmax = 12, method = "forward")),
+         predict_fwd_subset = map2(model_fwd_subset, test, ~predict(.x, .y, id = 12)),
+         mse_fwd_subset = map2_dbl(truths, predict_fwd_subset, ~mean((.x-exp(.y))^2)),
+         # model ridge regression with best lambda
+         model_ridge_bl = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 0, lambda = bestlam_r)),
+         predict_ridge_bl = map2(model_ridge_bl, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_r)),
+         mse_ridge_bl = map2_dbl(truths, predict_ridge_bl, ~mean((.x-exp(.y))^2)),
+         # model ridge regression with lambda = 1
+         model_ridge_l1 = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 0, lambda = cv_ridge$lambda.1se)),
+         predict_ridge_l1 = map2(model_ridge_l1, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = cv_ridge$lambda.1se)),
+         mse_ridge_l1 = map2_dbl(truths, predict_ridge_l1, ~mean((.x-exp(.y))^2)),
+         # model lasso regression with best lambda
+         model_lasso_bl = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 1, lambda = bestlam_l)),
+         predict_lasso_bl = map2(model_lasso_bl, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = bestlam_l)),
+         mse_lasso_bl = map2_dbl(truths, predict_lasso_bl, ~mean((.x-exp(.y))^2)),
+         # model lasso regression with lambda = 1
+         model_lasso_l1 = map(train, ~glmnet(.x %>% select(-crim) %>% as.matrix(), log(.x$crim), alpha = 1, lambda = cv_lasso$lambda.1se)),
+         predict_lasso_l1 = map2(model_lasso_l1, test, ~predict(.x, newx = .y %>% select(-crim) %>% as.matrix(), s = cv_lasso$lambda.1se)),
+         mse_lasso_l1 = map2_dbl(truths, predict_lasso_l1, ~mean((.x-exp(.y))^2)),
+         # model pcr with 13 components
+         model_pcr = map(train, ~pcr(log(crim)~., data = .x, scale = T, ncomp = 12)),
+         predict_pcr = map2(model_pcr, test, ~predict(.x, newdata = .y, ncomp = 8)),
+         mse_pcr = map2_dbl(truths, predict_pcr, ~mean((.x - exp(.y))^2)),
+         # model pls with 10 components
+         model_pls = map(train, ~plsr(log(crim)~., data = .x, scale = T, ncomp = 12)),
+         predict_pls = map2(model_pls, test, ~predict(.x, newdata = .y, ncomp = 6)),
+         mse_pls = map2_dbl(truths, predict_pls, ~mean((.x - exp(.y))^2))) %>% 
+   select(starts_with("mse")) %>% 
+  gather(key = model, value = mse) %>% 
+  mutate(model = str_remove(model, "mse_")) %>% 
+  arrange(mse))
+```
+
+```{r}
+final_comp %>% 
+  left_join(final_df_3, by = "model") %>% 
+  rename("mse_third" = "mse")
+```
+
+
 
 
 
