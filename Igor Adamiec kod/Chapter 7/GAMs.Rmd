@@ -1,0 +1,72 @@
+---
+title: "GAMs"
+author: "Igor Adamiec"
+date: "8/29/2019"
+output: html_document
+---
+
+```{r}
+gam1 <- lm(wage~ns(year, 4) + ns(age, 5) + education, data = Wage)
+
+```
+
+```{r}
+library(gam)
+```
+
+```{r}
+#funkcja s() to smoothing spline
+gam.m3 <- gam(wage~s(year, 4) + s(age, 5) + education, data = Wage)
+```
+
+```{r}
+par(mfrow = c(1,3))
+plot(gam.m3, se = T, col = "blue")
+```
+
+```{r}
+plot.Gam(gam1, se = T, col = "red")
+```
+
+```{r}
+gam.m1 <- gam(wage~)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
