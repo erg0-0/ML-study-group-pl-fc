@@ -1,0 +1,73 @@
+---
+title: "Fitting Classification Trees"
+author: "Igor Adamiec"
+date: "6 09 2019"
+output: html_document
+---
+
+```{r}
+library(tree)
+library(ISLR)
+library(tidyverse)
+library(rpart)
+```
+
+```{r}
+attach(Carseats)
+```
+
+```{r}
+High <- ifelse(Sales <= 8, "No", "Yes")
+```
+
+```{r}
+Carseats <- data.frame(Carseats, High)
+```
+
+```{r}
+tree.carseats <- tree(High~.-Sales, data = Carseats)
+```
+
+```{r}
+summary(tree.carseats)
+```
+```{r}
+plot(tree.carseats)
+text(tree.carseats, pretty = 0)
+```
+
+```{r}
+set.seed(2)
+train <- sample(1:nrow(Carseats), 200)
+Carseats.test <- Carseats[-train,]
+High.test <- High[-train]
+tree.carseats <- tree(High~.-Sales, Carseats, subset = train)
+tree.pred <- predict(tree.carseats, Carseats.test, type = "class")
+table(High.test, tree.pred)
+```
+
+```{r}
+set.seed(3)
+cv.carseats <- cv.tree(tree.carseats, FUN = prune.misclass)
+names(cv.carseats)
+```
+
+```{r}
+par(mfrow = c(1,2))
+plot(cv.carseats$size, cv.carseats$dev, type = "b")
+plot(cv.carseats$k, cv.carseats$dev, type  = "b")
+```
+
+```{r}
+prune.carseats <- prune.misclass(tree.carseats, best = 9)
+plot(prune.carseats)
+text(prune.carseats, pretty = 0)
+```
+
+```{r}
+tree.pred <- predict(prune.carseats, Carseats.test, type = "class")
+table(High.test, tree.pred)
+```
+
+
+

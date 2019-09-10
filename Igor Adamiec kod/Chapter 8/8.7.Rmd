@@ -1,0 +1,45 @@
+---
+title: '8.7'
+author: "Igor Adamiec"
+date: "8 09 2019"
+output: html_document
+---
+
+```{r}
+library(tidymodels)
+```
+
+```{r}
+set.seed(1)
+split <- Boston %>% initial_split(prop = .8)
+train_set <- split %>% training()
+test_set <- split %>% testing()
+```
+
+```{r}
+data <- tibble(train = list(train_set), test = list(test_set)) 
+
+data %>% 
+  crossing(mtry = 1:13) %>% 
+  mutate(model = map2(train, mtry, ~randomForest(medv~., data = .x, mtry = .y)),
+         predict = map2(model, test, ~predict(.x, .y)),
+         truths = map(test, "medv"),
+         mae = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+  ggplot(aes(x = mtry, y = mae)) +
+  geom_line() +
+  geom_point(color = "blue")
+```
+
+```{r}
+data %>% 
+  crossing(ntree = c(1, 2, 5, 10, 20, 50, 100, 250, 500, 750, 1000)) %>% 
+  mutate(model = map2(train, ntree, ~randomForest(medv~., data = .x, ntree = .y)),
+         predict = map2(model, test, ~predict(.x, .y)),
+         truths = map(test, "medv"),
+         mae = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+  ggplot(aes(x = ntree, y = mae)) +
+  geom_line() +
+  geom_point(color = "blue")
+```
+
+

@@ -1,0 +1,78 @@
+---
+title: '8.8'
+author: "Igor Adamiec"
+date: "8 09 2019"
+output: html_document
+---
+
+In the lab, a classification tree was applied to the Carseats data set after
+converting Sales into a qualitative response variable. Now we will
+seek to predict Sales using regression trees and related approaches,
+treating the response as a quantitative variable.
+(a) Split the data set into a training set and a test set.
+(b) Fit a regression tree to the training set. Plot the tree, and interpret
+the results. What test MSE do you obtain?
+(c) Use cross-validation in order to determine the optimal level of
+tree complexity. Does pruning the tree improve the test MSE?
+(d) Use the bagging approach in order to analyze this data. What
+test MSE do you obtain? Use the importance() function to determine
+which variables are most important.
+
+```{r}
+split <- Carseats %>% initial_split(prop = .8)
+train_set <- split %>% training()
+tests_set <- split %>% testing()
+```
+
+```{r}
+set.seed(1)
+reg_tree <- tree(Sales~., data = train_set)
+```
+
+```{r}
+plot(reg_tree)
+text(reg_tree, pretty = 0)
+```
+
+```{r}
+mse <- mean((tests_set$Sales - predict(reg_tree, newdata = tests_set))^2)
+```
+
+
+```{r}
+set.seed(1)
+cv_tree <- cv.tree(reg_tree)
+plot(cv_tree$size, cv_tree$dev, type = "b")
+```
+
+```{r}
+set.seed(1)
+pruned_tree <- prune.tree(reg_tree, best = 8)
+plot(pruned_tree)
+text(pruned_tree, pretty = 0)
+```
+
+```{r}
+mse_pruned <- mean((tests_set$Sales - predict(pruned_tree, newdata = tests_set))^2)
+```
+
+```{r}
+bagged <- randomForest(Sales~., data = train_set, mtry = length(train_set)-1, importance = T)
+mse_bagged <- mean((tests_set$Sales - predict(bagged, newdata = tests_set))^2)
+```
+
+```{r}
+importance(bagged)
+```
+
+```{r}
+tibble(train = list(train_set), test = list(tests_set)) %>% 
+  crossing(mtry  = 1:10) %>% 
+  mutate(model = map2(train, mtry, ~randomForest(Sales~., data = .x, mtry = .y)),
+         predict = map2(model, test, ~predict(.x, newdata = .y)),
+         truths = map(test, "Sales"),
+         mse = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+  dplyr::select(mtry, mse) %>% 
+  arrange(mse)
+```
+

@@ -1,0 +1,45 @@
+---
+title: "Fitting Regression Trees"
+author: "Igor Adamiec"
+date: "6 09 2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+```
+
+```{r}
+set.seed(1)
+train <- sample(1:nrow(Boston), nrow(Boston)/2)
+tree.boston <- tree(medv~., Boston, subset = train)
+summary(tree.boston)
+```
+
+```{r}
+plot(tree.boston)
+text(tree.boston, pretty = 0)
+```
+
+```{r}
+cv.boston <- cv.tree(tree.boston)
+plot(cv.boston$size, cv.boston$dev, type = "b")
+```
+
+```{r}
+prune.boston <- prune.tree(tree.boston, best = 5)
+plot(prune.boston)
+text(prune.boston, pretty = 0)
+```
+
+```{r}
+yhat <- predict(tree.boston, newdata = Boston[-train,])
+boston.test <- Boston[-train, "medv"]
+plot(yhat, boston.test)
+abline(0,1)
+```
+
+```{r}
+mean((yhat- boston.test)^2)
+```
+

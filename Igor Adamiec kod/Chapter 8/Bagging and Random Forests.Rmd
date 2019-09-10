@@ -1,0 +1,41 @@
+---
+title: "Bagging and Random Forests"
+author: "Igor Adamiec"
+date: "6 09 2019"
+output: html_document
+---
+
+```{r}
+library(randomForest)
+```
+
+```{r}
+set.seed(1)
+bag.boston <- randomForest(medv~., data = Boston, subset = train,
+                           mtry = 13, importance = T)
+bag.boston
+```
+
+```{r}
+yhat.bag <- predict(bag.boston, newdata = Boston[-train,])
+plot(yhat.bag, boston.test)
+abline(0,1)
+mean((yhat.bag - boston.test)^2)
+```
+
+```{r}
+set.seed(1)
+rf.boston <- randomForest(medv~., data = Boston, subset = train,
+                          mtry = 6, importance = TRUE)
+yhat.rf <- predict(rf.boston, newdata = Boston[-train,])
+mean((yhat.rf-boston.test)^2)
+```
+
+```{r}
+importance(rf.boston)
+```
+
+```{r}
+varImpPlot(rf.boston)
+```
+

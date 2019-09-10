@@ -1,0 +1,42 @@
+---
+title: "Boosting"
+author: "Igor Adamiec"
+date: "6 09 2019"
+output: html_document
+---
+
+```{r}
+library(gbm)
+```
+
+```{r}
+set.seed(1)
+boost.boston <- gbm(medv~., data = Boston[train,], 
+                    distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
+```
+
+```{r}
+boost.boston %>% summary()
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(boost.boston, i = "rm")
+plot(boost.boston, i = "lstat")
+```
+
+```{r}
+yhat.boost <- predict(boost.boston, newdata = Boston[-train,],
+                      n.trees = 5000)
+mean((yhat.boost-boston.test)^2)
+```
+
+```{r}
+boost.boston <- gbm(medv~., data = Boston[train,],
+                    distribution = "gaussian", n.trees = 5000, interaction.depth = 4, shrinkage = .2,
+                    verbose = F)
+yhat.boost <- predict(boost.boston, newdata = Boston[-train,], n.trees = 5000)
+mean((yhat.boost-boston.test)^2
+     )
+```
+

@@ -1,0 +1,66 @@
+---
+title: '8.10'
+author: "Igor Adamiec"
+date: "8 09 2019"
+output: html_document
+---
+
+```{r}
+Hitters %>% summary()
+```
+
+```{r}
+Hitters <- Hitters %>% 
+  filter(!is.na(Salary)) %>% 
+  mutate(Salary = log(Salary))
+```
+
+```{r}
+set.seed(1)
+split <- sample(1:nrow(Hitters), 200)
+train_set <- Hitters[split,]
+test_set <- Hitters[-split,]
+```
+
+```{r}
+set.seed(1)
+tibble(train = list(train_set), test = list(test_set)) %>% 
+  crossing(lambda = seq(.1, 1, by = .1)) %>% 
+  mutate(model = map2(train, lambda, ~gbm(Salary~., data = .x,
+                                          distribution = "gaussian",
+                                          interaction.depth = 4,
+                                          n.trees = 1000,
+                                          shrinkage = .y)),
+         truths = map(train, "Salary"),
+         predict = map2(model, train, ~predict(.x, newdata= .y, n.trees = 1000)),
+         mse = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+  dplyr::select(lambda, mse) %>% 
+  arrange(mse)
+```
+
+```{r}
+set.seed(1)
+tibble(train = list(train_set), test = list(test_set)) %>% 
+  crossing(lambda = seq(.1, 1, by = .1)) %>% 
+  mutate(model = map2(train, lambda, ~gbm(Salary~., data = .x,
+                                          distribution = "gaussian",
+                                          interaction.depth = 4,
+                                          n.trees = 1000,
+                                          shrinkage = .y)),
+         truths = map(test, "Salary"),
+         predict = map2(model, test, ~predict(.x, newdata= .y, n.trees = 1000)),
+         mse = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+  dplyr::select(lambda, mse) %>% 
+  arrange(mse)
+```
+
+```{r}
+gbm(Salary~., data = train_set, n.trees = 1000, shrinkage = .1, distribution = "gaussian", interaction.depth = 4) %>% summary()
+```
+
+
+
+
+
+
+
