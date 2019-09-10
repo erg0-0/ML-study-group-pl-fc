@@ -6,7 +6,9 @@ output: html_document
 ---
 
 ```{r}
-library(tidymodels)
+library(broom)
+library(yardstick)
+library(rsample)
 ```
 
 ```{r}
@@ -16,7 +18,10 @@ train_set <- split %>% training()
 test_set <- split %>% testing()
 ```
 
+
+
 ```{r}
+set.seed(1)
 data <- tibble(train = list(train_set), test = list(test_set)) 
 
 data %>% 
@@ -31,6 +36,7 @@ data %>%
 ```
 
 ```{r}
+set.seed(1)
 data %>% 
   crossing(ntree = c(1, 2, 5, 10, 20, 50, 100, 250, 500, 750, 1000)) %>% 
   mutate(model = map2(train, ntree, ~randomForest(medv~., data = .x, ntree = .y)),

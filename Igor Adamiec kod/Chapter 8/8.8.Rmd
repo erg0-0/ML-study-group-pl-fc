@@ -19,7 +19,8 @@ test MSE do you obtain? Use the importance() function to determine
 which variables are most important.
 
 ```{r}
-split <- Carseats %>% initial_split(prop = .8)
+set.seed(1)
+split <- ISLR::Carseats %>% initial_split(prop = .8)
 train_set <- split %>% training()
 tests_set <- split %>% testing()
 ```
@@ -47,7 +48,7 @@ plot(cv_tree$size, cv_tree$dev, type = "b")
 
 ```{r}
 set.seed(1)
-pruned_tree <- prune.tree(reg_tree, best = 8)
+pruned_tree <- prune.tree(reg_tree, best = 6)
 plot(pruned_tree)
 text(pruned_tree, pretty = 0)
 ```
@@ -57,6 +58,7 @@ mse_pruned <- mean((tests_set$Sales - predict(pruned_tree, newdata = tests_set))
 ```
 
 ```{r}
+set.seed(1)
 bagged <- randomForest(Sales~., data = train_set, mtry = length(train_set)-1, importance = T)
 mse_bagged <- mean((tests_set$Sales - predict(bagged, newdata = tests_set))^2)
 ```
@@ -66,6 +68,7 @@ importance(bagged)
 ```
 
 ```{r}
+set.seed(1)
 tibble(train = list(train_set), test = list(tests_set)) %>% 
   crossing(mtry  = 1:10) %>% 
   mutate(model = map2(train, mtry, ~randomForest(Sales~., data = .x, mtry = .y)),
@@ -74,5 +77,10 @@ tibble(train = list(train_set), test = list(tests_set)) %>%
          mse = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
   dplyr::select(mtry, mse) %>% 
   arrange(mse)
+```
+
+```{r}
+mse
+mse_pruned
 ```
 

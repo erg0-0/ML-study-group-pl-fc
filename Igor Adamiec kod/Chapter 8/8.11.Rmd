@@ -1,0 +1,35 @@
+---
+title: '8.11'
+author: "Igor Adamiec"
+date: "9/10/2019"
+output: html_document
+---
+
+```{r}
+Caravan$Purchase <- ifelse(Caravan$Purchase == "No", 0, 1)
+train_set <- Caravan[1:1000,]
+test_set <- Caravan[-c(1:1000),]
+```
+
+```{r}
+train_set %>% glimpse()
+```
+
+```{r}
+caravan_boost <- gbm(Purchase~., data = train_set,
+                     distribution = "bernoulli", n.trees = 1000, shrinkage = .01)
+```
+
+```{r}
+caravan_boost %>% summary()
+```
+
+```{r}
+prob_pred <- predict(caravan_boost, test_set, n.trees = 1000, type = "response")
+pred <- ifelse(prob_pred> .2, 1, 0)
+```
+
+```{r}
+table(test_set$Purchase, pred)
+```
+

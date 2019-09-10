@@ -37,6 +37,7 @@ trees. Which is higher?
 trees. Which is higher?
 
 ```{r}
+set.seed(1)
 split <- sample(1:nrow(OJ), 800)
 train_set <- OJ[split,]
 test_set <- OJ[-split,]
@@ -62,6 +63,7 @@ table(test_set$Purchase, predict(oj_tree, newdata = test_set, type = "class"))
 ```
 
 ```{r}
+set.seed(1)
 oj_pruned <- cv.tree(oj_tree, FUN = prune.misclass)
 plot(oj_pruned$size, oj_pruned$dev, type = "b")
 ```
@@ -72,8 +74,9 @@ oj_pruned$size
 ```
 
 ```{r}
+set.seed(1)
 tibble(test = list(test_set), model = list(oj_tree)) %>% 
-  crossing(prune = 2:9) %>% 
+  crossing(prune = 2:8) %>% 
   mutate(truths = map(test, "Purchase"),
          pruned = map2(model, prune, ~prune.misclass(.x, best = .y)),
          predict = map2(pruned, test, ~predict(.x, newdata = .y, type = "class")),
