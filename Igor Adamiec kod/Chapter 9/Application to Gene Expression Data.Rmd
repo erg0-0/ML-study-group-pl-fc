@@ -1,0 +1,43 @@
+---
+title: "Application to Gene Expression Data"
+author: "Igor Adamiec"
+date: "9/18/2019"
+output: html_document
+---
+
+```{r}
+library(ISLR)
+```
+
+```{r}
+names(Khan)
+dim(Khan$xtrain)
+dim(Khan$xtest)
+length(Khan$ytrain)
+length(Khan$ytest)
+```
+
+```{r}
+table(Khan$ytrain)
+```
+
+```{r}
+table(Khan$ytest)
+```
+
+```{r}
+dat <- data.frame(x = Khan$xtrain, y = as.factor(Khan$ytrain))
+out <- svm(y~., data = dat, kernel = "linear", cost = 10)
+summary(out)
+```
+
+```{r}
+table(out$fitted, dat$y)
+```
+
+```{r}
+dat.te <- data.frame(x = Khan$xtest, y = as.factor(Khan$ytest))
+pred.te <- predict(out, newdata = dat.te)
+table(pred.te, dat.te$y)
+```
+

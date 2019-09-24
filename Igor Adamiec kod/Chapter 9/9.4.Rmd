@@ -1,0 +1,87 @@
+---
+title: '9.4'
+author: "Igor Adamiec"
+date: "9/18/2019"
+output: html_document
+---
+
+```{r}
+library(broom)
+library(tidyverse)
+library(e1071)
+library(yardstick)
+library(rsample)
+```
+
+
+```{r}
+set.seed(1)
+x_1 <- rnorm(100)
+x_2 <- 3 * x ^2 + 4 + rnorm(100)
+train <- sample(100, 50)
+x_2[train] = x_2[train] + 3
+x_2[-train] = x_2[-train] - 3
+y <- rep(0, 100)
+y[train] <- 1
+```
+
+```{r}
+data <- tibble(x_1, x_2, y = as.factor(y)) 
+data %>% 
+  ggplot(aes(x = x_1, y = x_2)) +
+  geom_point(aes(color = y))
+```
+
+```{r}
+set.seed(1)
+split <- initial_split(data, prop = .8)
+train_set <- training(split)
+test_set <- testing(split)
+```
+
+```{r}
+df <- tibble(train = list(train_set), test = list(test_set))
+```
+
+
+# poynomial kernel
+```{r}
+df %>% 
+  crossing(degree = 1:5, cost = c(.1, 1, 10, 100, 1000, 10000)) %>% 
+  mutate(
+    model = pmap(list(train, test, degree, cost), function(train, test, degree, cost) {
+      svm(y~., data = train, degree= degree, cost = cost, kernel = "polynomial")
+    }),
+    truths = map(test, "y"),
+    predict = map2(model, test, ~predict(.x, newdata = .y)),
+    error_rate = map2_dbl(truths, predict, ~(1-accuracy_vec(.x, .y)))) %>% 
+  select(degree, cost, error_rate) %>% 
+  arrange(error_rate)
+      
+```
+
+```{r}
+
+svm(y~., data = train_set, cost = 10, degree = 2,  kernel = "polynomial") %>% plot(train_set)
+```
+
+# radial kernel
+```{r}
+df %>% 
+  crossing(gamma = c(.5, 1, 2, 3, 4), cost = c(.1, 1, 10, 100, 1000, 10000)) %>% 
+  mutate(
+    model = pmap(list(train, test, gamma, cost), function(train, test, gamma, cost) {
+      svm(y~., data = train, gamma= gamma, cost = cost, kernel = "radial")
+    }),
+    truths = map(test, "y"),
+    predict = map2(model, test, ~predict(.x, newdata = .y)),
+    error_rate = map2_dbl(truths, predict, ~(1-accuracy_vec(.x, .y)))) %>% 
+  select(gamma, cost, error_rate) %>% 
+  arrange(error_rate)
+      
+```
+
+```{r}
+
+svm(y~., data = train_set, cost = 1, gamma = 2,  kernel = "radial") %>% plot(train_set)
+```
