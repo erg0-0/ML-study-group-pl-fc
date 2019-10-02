@@ -6,15 +6,19 @@ output: html_document
 ---
 
 ```{r}
+library(tidyverse)
+library(ISLR)
 library(broom)
 library(yardstick)
 library(rsample)
+library(tictoc)
+library(randomForest)
 ```
 
 ```{r}
 set.seed(1)
 split <- Boston %>% initial_split(prop = .8)
-train_set <- split %>% training()
+train_set <- split %>% training() 
 test_set <- split %>% testing()
 ```
 
@@ -29,8 +33,8 @@ data %>%
   mutate(model = map2(train, mtry, ~randomForest(medv~., data = .x, mtry = .y)),
          predict = map2(model, test, ~predict(.x, .y)),
          truths = map(test, "medv"),
-         mae = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
-  ggplot(aes(x = mtry, y = mae)) +
+         mse = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+  ggplot(aes(x = mtry, y = mse)) +
   geom_line() +
   geom_point(color = "blue")
 ```
@@ -42,10 +46,49 @@ data %>%
   mutate(model = map2(train, ntree, ~randomForest(medv~., data = .x, ntree = .y)),
          predict = map2(model, test, ~predict(.x, .y)),
          truths = map(test, "medv"),
-         mae = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>% 
+         mae = map2_dbl(truths, predict, ~mean((.x - .y)^2))) %>%  
   ggplot(aes(x = ntree, y = mae)) +
   geom_line() +
   geom_point(color = "blue")
 ```
 
+```{r}
+tic()
+set.seed(1)
+(complex <- vfold_cv(train_set) %>% 
+  mutate(
+    train = map(splits, ~training(.x)),
+    validate = map(splits, ~testing(.x))
+  ) %>%
+  crossing(ntree = c(1, 2, 5, 10, 20, 50, 100, 250, 500, 750, 1000),
+           mtry = 1:13) %>%
+  mutate(model = pmap(.,  function(train, ntree, mtry, validate, splits, id) {randomForest(formula = medv~., data = train, ntree = ntree, mtry = mtry)}),
+         predict = map2(model, validate, ~predict(.x, .y)),
+         truths = map(validate, "medv"),
+         mae = map2_dbl(truths, predict, ~mean((.x - .y)^2))))
+toc()
+```
+
+```{r}
+complex %>% 
+  group_by(mtry, ntree) %>% 
+  summarize(mae = mean(mae)) %>% 
+  arrange(mae)
+```
+
+```{r}
+complex %>% 
+  group_by(ntree) %>% 
+  summarize(mae = mean(mae)) %>% 
+  ggplot(aes(x = ntree, y = mae))+
+  geom_line() +
+  geom_point(color = "blue")
+```
+
+```{r}
+complex %>% 
+  ggplot(aes(x = ntree, y = mtry)) +
+  geom_tile(aes(fill = mae)) +
+  scale_x_log10()
+```
 

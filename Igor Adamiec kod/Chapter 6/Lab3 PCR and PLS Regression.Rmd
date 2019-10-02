@@ -38,7 +38,7 @@ pcr.fit <- pcr(y~x, scale = T, ncomp = 7)
 summary(pcr.fit)
 ```
 
-# Partial Lest Squares
+# Partial Last Squares
 
 ```{r}
 set.seed(1)

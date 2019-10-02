@@ -29,6 +29,7 @@ dim(coef(ridge.mod))
 ```
 
 ```{r}
+grid[50]
 ridge.mod$lambda[50]
 
 coef(ridge.mod)[,50]

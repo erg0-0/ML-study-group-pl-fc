@@ -1,0 +1,99 @@
+---
+title: '6.10'
+author: "Igor Adamiec"
+date: "14 08 2019"
+output: html_document
+---
+
+```{r}
+library(MASS)
+library(tidyverse)
+library(leaps)
+data(Boston)
+```
+
+```{r}
+Boston %>% head()
+```
+
+```{r}
+k <- 10
+set.seed(1)
+folds <- sample(1:k, nrow(Boston), replace = T)
+cv.errors <- matrix(NA, k, 13, dimnames = list(NULL, paste(1:13)))
+```
+
+```{r}
+for (j in 1:k) {
+  best.fit <- regsubsets(crim~., Boston[folds != j, ], nvmax = 13)
+  for (i in 1:13) {
+    pred <- predict(best.fit, Boston[folds == j, ], id = i)
+    cv.errors[j, i] <- mean( (Boston$crim[folds == j] - pred)^2)
+  }
+}
+```
+
+```{r}
+mean.cv.errors <- apply(cv.errors, 2, mean)
+mean.cv.errors
+```
+
+```{r}
+par(mfrow = c(1, 1))
+plot(mean.cv.errors, type = "b")
+```
+
+```{r}
+reg.best <- regsubsets(Salary~., data = Hitters, nvmax = 19)
+coef(reg.best, 11)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

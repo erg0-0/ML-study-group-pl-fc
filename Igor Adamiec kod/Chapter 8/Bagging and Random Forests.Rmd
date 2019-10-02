@@ -16,6 +16,9 @@ bag.boston <- randomForest(medv~., data = Boston, subset = train,
 bag.boston
 ```
 
+
+
+
 ```{r}
 yhat.bag <- predict(bag.boston, newdata = Boston[-train,])
 plot(yhat.bag, boston.test)
